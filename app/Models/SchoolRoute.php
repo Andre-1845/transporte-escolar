@@ -26,4 +26,14 @@ class SchoolRoute extends Model
     {
         return $this->belongsToMany(Bus::class);
     }
+
+    public function points()
+    {
+        return $this->hasMany(RoutePoint::class)->orderBy('order');
+    }
+
+    public function trips()
+    {
+        return $this->hasMany(Trip::class);
+    }
 }

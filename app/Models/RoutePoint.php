@@ -6,25 +6,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Traits\BelongsToSchool;
 
-class Bus extends Model
+class RoutePoint extends Model
 {
     use HasFactory, BelongsToSchool;
 
     protected $fillable = [
         'school_id',
-        'plate',
-        'model',
-        'capacity',
-        'active'
+        'school_route_id',
+        'name',
+        'latitude',
+        'longitude',
+        'order',
+        'estimated_time'
     ];
 
-    public function school()
+    public function route()
     {
-        return $this->belongsTo(School::class);
-    }
-
-    public function trips()
-    {
-        return $this->hasMany(Trip::class);
+        return $this->belongsTo(SchoolRoute::class, 'school_route_id');
     }
 }
