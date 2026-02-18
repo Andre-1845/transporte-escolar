@@ -31,4 +31,10 @@ class Trip extends Model
     {
         return $this->belongsTo(SchoolRoute::class, 'school_route_id');
     }
+
+    public function locations()
+    {
+        return $this->hasMany(TripLocation::class)
+            ->orderBy('recorded_at');
+    }
 }
