@@ -9,6 +9,20 @@ use Illuminate\Http\Request;
 
 class TripLocationController extends Controller
 {
+    public function index($tripId)
+    {
+        $trip = Trip::findOrFail($tripId);
+
+        $locations = $trip->locations()
+            ->orderBy('recorded_at', 'asc')
+            ->limit(100) // evita sobrecarga
+            ->get();
+
+        return response()->json([
+            'data' => $locations
+        ]);
+    }
+
     public function store(Request $request, $tripId)
     {
         $request->validate([
