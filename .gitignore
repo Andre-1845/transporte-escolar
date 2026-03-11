@@ -22,3 +22,6 @@ yarn-error.log
 /.vscode
 /.zed
 /storage/logs
+/bootstrap/cache/*.php
+.DS_Store
+Thumbs.db
