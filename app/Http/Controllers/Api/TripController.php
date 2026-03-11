@@ -96,4 +96,25 @@ class TripController extends Controller
             'data' => new TripResource($trip->load(['bus', 'route.points']))
         ]);
     }
+
+    public function todayForDriver()
+    {
+        $user = auth()->user();
+
+        if (!$user->hasRole('driver')) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $trip = Trip::where('school_id', $user->school_id)
+            ->whereDate('trip_date', today())
+            ->where('status', 'scheduled')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => $trip
+        ]);
+    }
 }

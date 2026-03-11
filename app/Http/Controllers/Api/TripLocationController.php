@@ -45,4 +45,26 @@ class TripLocationController extends Controller
             'data' => $location
         ]);
     }
+
+    public function latest($id)
+    {
+        $location = \App\Models\TripLocation::where('trip_id', $id)
+            ->latest()
+            ->first();
+
+        if (!$location) {
+            return response()->json([
+                'success' => true,
+                'data' => null
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'lat' => $location->latitude,
+                'lng' => $location->longitude,
+            ]
+        ]);
+    }
 }
