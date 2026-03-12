@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\TripLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Models\TripLocation;
@@ -39,6 +40,9 @@ class TripLocationController extends Controller
             'longitude' => $request->longitude,
             'recorded_at' => now(),
         ]);
+
+        //  DISPARAR EVENTO WEBSOCKET
+        broadcast(new TripLocationUpdated($trip, $location));
 
         return response()->json([
             'message' => 'Location recorded',
