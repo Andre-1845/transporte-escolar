@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\TripAdminController;
 
-Route::prefix('admin')->middleware(['auth'])->group(function () {
+Route::prefix('admin')->group(function () {
 
     Route::get('/trips', [TripAdminController::class, 'index']);
     Route::get('/trips/{id}/edit', [TripAdminController::class, 'edit']);
