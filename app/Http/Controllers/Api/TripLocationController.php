@@ -7,6 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Models\TripLocation;
 use Illuminate\Http\Request;
+use App\Models\RouteStop;
+use App\Helpers\GeoHelper;
+use App\Services\FirebasePushService;
 
 class TripLocationController extends Controller
 {
@@ -30,6 +33,44 @@ class TripLocationController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
         ]);
+
+        $lat = $request->latitude;
+        $lng = $request->longitude;
+
+        TripLocation::create([
+            'trip_id' => $tripId,
+            'latitude' => $lat,
+            'longitude' => $lng,
+        ]);
+
+        $trip = Trip::findOrFail($tripId);
+
+        $stops = RouteStop::where('school_route_id', $trip->school_route_id)
+            ->orderBy('stop_order')
+            ->get();
+
+        foreach ($stops as $stop) {
+
+            $distance = GeoHelper::distanceMeters(
+                $lat,
+                $lng,
+                $stop->latitude,
+                $stop->longitude
+            );
+
+            if ($distance <= $stop->radius_meters) {
+
+                FirebasePushService::sendToStop(
+                    $stop->id,
+                    "🚌 Seu ônibus está chegando",
+                    "Parada: {$stop->name}"
+                );
+            }
+
+
+
+            return response()->json(['status' => 'ok']);
+        }
 
         $trip = Trip::findOrFail($tripId);
 
