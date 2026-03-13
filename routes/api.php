@@ -20,8 +20,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/routes', [SchoolRouteController::class, 'index']);
         Route::get('/routes/{id}', [SchoolRouteController::class, 'show']);
         Route::get('/trips', [TripController::class, 'index']);
+        Route::post('/trips', [TripController::class, 'store']);
         Route::get('/trips/active', [TripController::class, 'active']);
         Route::get('/trips/{id}', [TripController::class, 'show']);
+        Route::put('/trips/{id}', [TripController::class, 'update']);
         Route::post('/trips/{id}/location', [TripLocationController::class, 'store']);
         Route::get('/trips/{id}/latest-location', [TripLocationController::class, 'latest']);
         Route::get('/driver/today-trip', [TripController::class, 'todayForDriver']);

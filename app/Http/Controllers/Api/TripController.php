@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TripResource;
 use App\Models\Trip;
+use Illuminate\Http\Request;
 
 class TripController extends Controller
 {
@@ -34,13 +35,6 @@ class TripController extends Controller
             ->where('status', 'in_progress')
             ->get();
 
-        if ($trips->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => []
-            ]);
-        }
-
         return response()->json([
             'success' => true,
             'data' => TripResource::collection($trips)
@@ -58,12 +52,11 @@ class TripController extends Controller
             ], 400);
         }
 
-        // REGRA IMPORTANTE: apenas 1 trip ativa por ônibus
+        // Apenas uma trip ativa por ônibus
         Trip::where('bus_id', $trip->bus_id)
             ->where('status', 'in_progress')
             ->update(['status' => 'completed']);
 
-        //  Inicia a nova trip
         $trip->update([
             'status' => 'in_progress'
         ]);
@@ -108,6 +101,7 @@ class TripController extends Controller
         }
 
         $trip = Trip::where('school_id', $user->school_id)
+            ->where('driver_id', $user->id)
             ->whereDate('trip_date', today())
             ->where('status', 'scheduled')
             ->first();
@@ -115,6 +109,54 @@ class TripController extends Controller
         return response()->json([
             'success' => true,
             'data' => $trip
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $trip = Trip::findOrFail($id);
+
+        $trip->update([
+            'trip_date' => $request->trip_date ?? $trip->trip_date,
+            'status' => $request->status ?? $trip->status,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Trip atualizada',
+            'data' => $trip
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $trip = Trip::create([
+            'school_id' => auth()->user()->school_id,
+            'school_route_id' => $request->school_route_id,
+            'bus_id' => $request->bus_id,
+            'driver_id' => $request->driver_id,
+            'trip_date' => $request->trip_date,
+            'status' => 'scheduled'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Trip criada',
+            'data' => $trip
+        ]);
+    }
+
+    public function reset($id)
+    {
+        $trip = Trip::findOrFail($id);
+
+        $trip->update([
+            'status' => 'scheduled'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Trip resetada'
         ]);
     }
 }
