@@ -4,6 +4,9 @@
 
     @csrf
 
+    <label>School ID</label>
+    <input name="school_id">
+
     <label>Route ID</label>
     <input name="school_route_id">
 
@@ -20,7 +23,7 @@
     <br><br>
 
     <label>Date</label>
-    <input type="date" name="date">
+    <input type="date" name="trip_date">
 
     <br><br>
 
