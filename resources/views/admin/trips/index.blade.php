@@ -1,72 +1,40 @@
-<?php
+<h2>Trips</h2>
 
-namespace App\Http\Controllers\Admin;
+<a href="/admin/trips/create">Nova Trip</a>
 
-use App\Http\Controllers\Controller;
-use App\Models\Trip;
-use Illuminate\Http\Request;
+<table border="1" cellpadding="6">
 
-class TripAdminController extends Controller
-{
-    public function index()
-    {
-        $trips = Trip::orderBy('date', 'desc')->get();
+    <tr>
+        <th>ID</th>
+        <th>Data</th>
+        <th>Status</th>
+        <th>Ações</th>
+    </tr>
 
-        return view('admin.trips.index', compact('trips'));
-    }
+    @foreach ($trips as $trip)
+        <tr>
 
-    public function edit($id)
-    {
-        $trip = Trip::findOrFail($id);
+            <td>{{ $trip->id }}</td>
+            <td>{{ $trip->trip_date }}</td>
+            <td>{{ $trip->status }}</td>
 
-        return view('admin.trips.edit', compact('trip'));
-    }
+            <td>
 
-    public function update(Request $request, $id)
-    {
-        $trip = Trip::findOrFail($id);
+                <a href="/admin/trips/{{ $trip->id }}/edit">Editar</a>
 
-        $trip->update([
-            'date' => $request->date,
-            'status' => $request->status,
-        ]);
+                <form action="/admin/trips/{{ $trip->id }}/start" method="POST" style="display:inline">
+                    @csrf
+                    <button>Start</button>
+                </form>
 
-        return redirect('/admin/trips');
-    }
+                <form action="/admin/trips/{{ $trip->id }}/finish" method="POST" style="display:inline">
+                    @csrf
+                    <button>Finish</button>
+                </form>
 
-    public function start($id)
-    {
-        $trip = Trip::findOrFail($id);
+            </td>
 
-        $trip->update(['status' => 'running']);
+        </tr>
+    @endforeach
 
-        return back();
-    }
-
-    public function finish($id)
-    {
-        $trip = Trip::findOrFail($id);
-
-        $trip->update(['status' => 'finished']);
-
-        return back();
-    }
-
-    public function create()
-    {
-        return view('admin.trips.create');
-    }
-
-    public function store(Request $request)
-    {
-        Trip::create([
-            'school_route_id' => $request->school_route_id,
-            'bus_id' => $request->bus_id,
-            'driver_id' => $request->driver_id,
-            'date' => $request->date,
-            'status' => 'scheduled',
-        ]);
-
-        return redirect('/admin/trips');
-    }
-}
+</table>

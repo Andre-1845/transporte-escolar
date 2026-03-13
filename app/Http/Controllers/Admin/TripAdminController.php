@@ -11,7 +11,7 @@ class TripAdminController extends Controller
 
     public function index()
     {
-        $trips = Trip::orderBy('date', 'desc')->get();
+        $trips = Trip::orderBy('trip_date', 'desc')->get();
 
         return view('admin.trips.index', compact('trips'));
     }
