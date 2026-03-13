@@ -62,6 +62,7 @@ class TripAdminController extends Controller
     {
         Trip::create([
             'school_route_id' => $request->school_route_id,
+            'school_id' => $request->school_id,
             'bus_id' => $request->bus_id,
             'driver_id' => $request->driver_id,
             'date' => $request->date,
