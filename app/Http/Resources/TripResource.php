@@ -33,7 +33,15 @@ class TripResource extends JsonResource
             }),
 
             'points' => $this->whenLoaded('route', function () {
-                return RoutePointResource::collection($this->route->points);
+                return $this->route->points
+                    ? RoutePointResource::collection($this->route->points)
+                    : [];
+            }, []),
+
+            'stops' => $this->whenLoaded('route', function () {
+                return $this->route->stops
+                    ? RouteStopResource::collection($this->route->stops)
+                    : [];
             }, []),
         ];
     }

@@ -32,6 +32,12 @@ class SchoolRoute extends Model
         return $this->hasMany(RoutePoint::class)->orderBy('order');
     }
 
+    public function stops()
+    {
+        return $this->hasMany(RouteStop::class)
+            ->orderBy('stop_order');
+    }
+
     public function trips()
     {
         return $this->hasMany(Trip::class);

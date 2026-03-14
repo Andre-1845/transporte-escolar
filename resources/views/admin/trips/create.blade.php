@@ -4,29 +4,61 @@
 
     @csrf
 
-    <label>School ID</label>
-    <input name="school_id">
+    <label>Rota</label>
 
-    <label>Route ID</label>
-    <input name="school_route_id">
+    <select name="school_route_id" required>
+        <option value="">Selecione</option>
 
-    <br><br>
+        @foreach ($routes as $route)
+            <option value="{{ $route->id }}">
+                {{ $route->name }}
+            </option>
+        @endforeach
 
-    <label>Bus ID</label>
-    <input name="bus_id">
-
-    <br><br>
-
-    <label>Driver ID</label>
-    <input name="driver_id">
+    </select>
 
     <br><br>
 
-    <label>Date</label>
-    <input type="date" name="trip_date">
+    <label>Ônibus</label>
+
+    <select name="bus_id" required>
+        <option value="">Selecione</option>
+
+        @foreach ($buses as $bus)
+            <option value="{{ $bus->id }}">
+                {{ $bus->plate }}
+            </option>
+        @endforeach
+
+    </select>
 
     <br><br>
 
-    <button>Criar</button>
+    <label>Motorista</label>
+
+    <select name="driver_id" required>
+        <option value="">Selecione</option>
+
+        @foreach ($drivers as $driver)
+            <option value="{{ $driver->id }}">
+                {{ $driver->name }}
+            </option>
+        @endforeach
+
+    </select>
+
+    <br><br>
+
+    <label>Data</label>
+    <input type="date" name="trip_date" required>
+
+    <br><br>
+
+    <label>Horário</label>
+    <input type="time" name="start_time" required>
+
+    <br><br>
+
+    <button type="submit">Criar Trip</button>
 
 </form>

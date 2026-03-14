@@ -23,7 +23,8 @@ class TripController extends Controller
     {
         $trip = Trip::with([
             'bus',
-            'route.points'
+            'route.points',
+            'route.stops',
         ])->findOrFail($id);
 
         return new TripResource($trip);
@@ -31,7 +32,7 @@ class TripController extends Controller
 
     public function active()
     {
-        $trips = Trip::with(['bus', 'route'])
+        $trips = Trip::with(['bus', 'route', 'route.points', 'route.stops'])
             ->where('school_id', auth()->user()->school_id)
             ->where('status', 'in_progress')
             ->get();
@@ -65,7 +66,7 @@ class TripController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Trip started',
-            'data' => new TripResource($trip->load(['bus', 'route.points']))
+            'data' => new TripResource($trip->load(['bus', 'route.points', 'route.stops']))
         ]);
     }
 
@@ -87,17 +88,27 @@ class TripController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Trip finished',
-            'data' => new TripResource($trip->load(['bus', 'route.points']))
+            'data' => new TripResource($trip->load(['bus', 'route.points', 'route.stops']))
         ]);
     }
 
     public function todayTrips()
     {
-        $active = Trip::with(['route'])
+        $active = Trip::with([
+            'route',
+            'bus',
+            'route.points',
+            'route.stops'
+        ])
             ->where('status', 'in_progress')
             ->get();
 
-        $scheduled = Trip::with(['route'])
+        $scheduled = Trip::with([
+            'route',
+            'bus',
+            'route.points',
+            'route.stops'
+        ])
             ->whereDate('trip_date', today())
             ->where('status', 'scheduled')
             ->orderBy('start_time')
