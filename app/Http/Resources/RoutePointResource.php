@@ -14,7 +14,7 @@ class RoutePointResource extends JsonResource
             'name' => $this->name,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'order' => $this->order,
+            'order' => $this->point_order,
             'estimated_time' => $this->estimated_time,
         ];
     }

@@ -9,14 +9,30 @@
 
     <br><br>
 
+    <label>Horário</label>
+    <input type="time" name="start_time" required>
+    <br><br>
     <label>Status</label>
 
     <select name="status">
 
         <option value="scheduled">scheduled</option>
-        <option value="running">running</option>
-        <option value="finished">finished</option>
+        <option value="in_progress">in_progress</option>
+        <option value="completed">completed</option>
         <option value="cancelled">cancelled</option>
+
+    </select>
+    <br><br>
+    <label>Motorista</label>
+
+    <select name="driver_id" required>
+        <option value="">Selecione</option>
+
+        @foreach ($drivers as $driver)
+            <option value="{{ $driver->id }}">
+                {{ $driver->name }}
+            </option>
+        @endforeach
 
     </select>
 
