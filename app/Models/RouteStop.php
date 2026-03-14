@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSchool;
 
 class RouteStop extends Model
 {
+    use BelongsToSchool;
+
     protected $table = 'route_stops';
 
     protected $fillable = [

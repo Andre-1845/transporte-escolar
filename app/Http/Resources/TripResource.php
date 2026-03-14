@@ -11,23 +11,30 @@ class TripResource extends JsonResource
     {
         return [
             'id' => $this->id,
+
             'trip_date' => $this->trip_date,
+            'start_time' => $this->start_time,
+
             'status' => $this->status,
 
-            'bus' => [
-                'id' => $this->bus?->id,
-                'plate' => $this->bus?->plate,
-                'capacity' => $this->bus?->capacity,
-            ],
+            'bus' => $this->whenLoaded('bus', function () {
+                return [
+                    'id' => $this->bus->id,
+                    'plate' => $this->bus->plate,
+                    'capacity' => $this->bus->capacity,
+                ];
+            }),
 
-            'route' => [
-                'id' => $this->route?->id,
-                'name' => $this->route?->name,
-            ],
+            'route' => $this->whenLoaded('route', function () {
+                return [
+                    'id' => $this->route->id,
+                    'name' => $this->route->name,
+                ];
+            }),
 
-            'points' => $this->route
-                ? RoutePointResource::collection($this->route->points)
-                : [],
+            'points' => $this->whenLoaded('route', function () {
+                return RoutePointResource::collection($this->route->points);
+            }, []),
         ];
     }
 }

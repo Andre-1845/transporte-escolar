@@ -13,13 +13,16 @@ class Trip extends Model
     protected $fillable = [
         'school_id',
         'bus_id',
+        'driver_id',
         'school_route_id',
         'trip_date',
-        'status'
+        'start_time',
+        'status',
     ];
 
     protected $casts = [
-        'trip_date' => 'date'
+        'trip_date' => 'date',
+        'start_time' => 'datetime:H:i',
     ];
 
     public function bus()

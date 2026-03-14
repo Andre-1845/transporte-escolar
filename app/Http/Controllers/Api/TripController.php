@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TripResource;
 use App\Models\Trip;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class TripController extends Controller
 {
@@ -90,9 +91,30 @@ class TripController extends Controller
         ]);
     }
 
+    public function todayTrips()
+    {
+        $active = Trip::with(['route'])
+            ->where('status', 'in_progress')
+            ->get();
+
+        $scheduled = Trip::with(['route'])
+            ->whereDate('trip_date', today())
+            ->where('status', 'scheduled')
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'active' => TripResource::collection($active),
+                'scheduled' => TripResource::collection($scheduled)
+            ]
+        ]);
+    }
+
     public function todayForDriver()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         if (!$user->hasRole('driver')) {
             return response()->json([
@@ -131,11 +153,11 @@ class TripController extends Controller
     public function store(Request $request)
     {
         $trip = Trip::create([
-            'school_id' => auth()->user()->school_id,
             'school_route_id' => $request->school_route_id,
             'bus_id' => $request->bus_id,
             'driver_id' => $request->driver_id,
             'trip_date' => $request->trip_date,
+            'start_time' => $request->start_time,
             'status' => 'scheduled'
         ]);
 

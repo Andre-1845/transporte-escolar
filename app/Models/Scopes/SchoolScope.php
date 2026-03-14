@@ -11,21 +11,21 @@ class SchoolScope implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
-        if (Auth::check()) {
+        $user = Auth::user();
 
-            $user = Auth::user();
+        if (!$user) {
+            return;
+        }
 
-            // Super Admin vê tudo
-            if ($user->hasRole('super_admin')) {
-                return;
-            }
+        if ($user->hasRole('super_admin')) {
+            return;
+        }
 
-            if ($user->school_id) {
-                $builder->where(
-                    $model->getTable() . '.school_id',
-                    $user->school_id
-                );
-            }
+        if ($user->school_id) {
+            $builder->where(
+                $model->qualifyColumn('school_id'),
+                $user->school_id
+            );
         }
     }
 }
