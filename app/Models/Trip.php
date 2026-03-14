@@ -22,7 +22,7 @@ class Trip extends Model
 
     protected $casts = [
         'trip_date' => 'date:Y-m-d',
-        'start_time' => 'datetime:H:i:s',
+        'start_time' => 'string',
     ];
 
     protected static function booted()
