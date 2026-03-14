@@ -5,12 +5,12 @@
     @csrf
 
     <label>Data</label>
-    <input type="date" name="date" value="{{ $trip->date }}">
+    <input type="date" name="trip_date" value="{{ $trip->date }}">
 
     <br><br>
 
     <label>Horário</label>
-    <input type="time" name="start_time" required>
+    <input type="time" name="start_time" value="{{ $trip->start_time }}" required>
     <br><br>
     <label>Status</label>
 

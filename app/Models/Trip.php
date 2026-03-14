@@ -21,9 +21,19 @@ class Trip extends Model
     ];
 
     protected $casts = [
-        'trip_date' => 'date',
-        'start_time' => 'datetime:H:i',
+        'trip_date' => 'date:Y-m-d',
+        'start_time' => 'datetime:H:i:s',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($trip) {
+
+            if (!$trip->school_id) {
+                $trip->school_id = auth()->user()->school_id;
+            }
+        });
+    }
 
     public function bus()
     {

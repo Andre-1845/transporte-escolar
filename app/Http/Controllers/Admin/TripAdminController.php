@@ -37,6 +37,7 @@ class TripAdminController extends Controller
     public function store(Request $request)
     {
         Trip::create([
+            'school_id' => auth()->user()->school_id,
             'school_route_id' => $request->school_route_id,
             'bus_id' => $request->bus_id,
             'driver_id' => $request->driver_id,
