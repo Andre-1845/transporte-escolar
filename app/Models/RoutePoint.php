@@ -16,7 +16,7 @@ class RoutePoint extends Model
         'name',
         'latitude',
         'longitude',
-        'order',
+        'point_order',
         'estimated_time'
     ];
 

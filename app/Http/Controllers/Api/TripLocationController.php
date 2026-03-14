@@ -34,17 +34,21 @@ class TripLocationController extends Controller
             'longitude' => 'required|numeric',
         ]);
 
+        $trip = Trip::findOrFail($tripId);
+
         $lat = $request->latitude;
         $lng = $request->longitude;
 
-        TripLocation::create([
-            'trip_id' => $tripId,
+        // salvar localização
+        $location = TripLocation::create([
+            'school_id' => $trip->school_id,
+            'trip_id' => $trip->id,
             'latitude' => $lat,
             'longitude' => $lng,
+            'recorded_at' => now(),
         ]);
 
-        $trip = Trip::findOrFail($tripId);
-
+        // buscar paradas da rota
         $stops = RouteStop::where('school_route_id', $trip->school_route_id)
             ->orderBy('stop_order')
             ->get();
@@ -66,23 +70,9 @@ class TripLocationController extends Controller
                     "Parada: {$stop->name}"
                 );
             }
-
-
-
-            return response()->json(['status' => 'ok']);
         }
 
-        $trip = Trip::findOrFail($tripId);
-
-        $location = TripLocation::create([
-            'school_id' => $trip->school_id,
-            'trip_id' => $trip->id,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'recorded_at' => now(),
-        ]);
-
-        //  DISPARAR EVENTO WEBSOCKET
+        // disparar websocket
         broadcast(new TripLocationUpdated($trip, $location));
 
         return response()->json([
