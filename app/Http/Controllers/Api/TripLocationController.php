@@ -39,6 +39,28 @@ class TripLocationController extends Controller
         $lat = $request->latitude;
         $lng = $request->longitude;
 
+        // buscar última localização
+        $lastLocation = TripLocation::where('trip_id', $trip->id)
+            ->latest()
+            ->first();
+
+        if ($lastLocation) {
+
+            $distance = GeoHelper::distanceMeters(
+                $lat,
+                $lng,
+                $lastLocation->latitude,
+                $lastLocation->longitude
+            );
+
+            // se moveu menos que 20m, não salva
+            if ($distance < 20) {
+                return response()->json([
+                    'message' => 'Location ignored (too close)'
+                ]);
+            }
+        }
+
         // salvar localização
         $location = TripLocation::create([
             'school_id' => $trip->school_id,
