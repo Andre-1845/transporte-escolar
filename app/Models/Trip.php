@@ -25,6 +25,11 @@ class Trip extends Model
         'start_time' => 'string',
     ];
 
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d');
+    }
+
     protected static function booted()
     {
         static::creating(function ($trip) {
