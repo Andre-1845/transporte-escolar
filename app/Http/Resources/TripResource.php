@@ -12,7 +12,8 @@ class TripResource extends JsonResource
         return [
             'id' => $this->id,
 
-            'trip_date' => $this->trip_date,
+            'trip_date' => $this->trip_date?->format('Y-m-d'),
+
             'start_time' => $this->start_time,
 
             'status' => $this->status,
