@@ -35,4 +35,12 @@ class RouteStop extends Model
     {
         return $this->hasMany(RouteStop::class);
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'user_route_stops'
+        );
+    }
 }
