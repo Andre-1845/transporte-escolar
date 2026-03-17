@@ -8,7 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
-
+use Spatie\Permission\Models\Role;
 
 class User extends Authenticatable
 {
@@ -59,5 +59,25 @@ class User extends Authenticatable
     public function school()
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function routeStops()
+    {
+        return $this->belongsToMany(
+            RouteStop::class,
+            'user_route_stops'
+        );
+    }
+
+    public function scopeDrivers($query)
+    {
+        return $query->whereHas('roles', function ($q) {
+            $q->where('name', 'driver');
+        });
+    }
+
+    public function scopeFromSchool($query)
+    {
+        return $query->where('school_id', auth()->user()->school_id);
     }
 }
