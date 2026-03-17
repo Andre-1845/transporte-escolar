@@ -55,15 +55,23 @@
                         </a>
 
                         @if ($trip->status == 'scheduled')
-                            <a href="/admin/trips/{{ $trip->id }}/start">
-                                Iniciar
-                            </a>
+                            <form action="{{ url('/admin/trips/' . $trip->id . '/start') }}" method="POST"
+                                style="display:inline;">
+                                @csrf
+                                <button type="submit" class="btn btn-success">
+                                    Iniciar
+                                </button>
+                            </form>
                         @endif
 
                         @if ($trip->status == 'in_progress')
-                            <a href="/admin/trips/{{ $trip->id }}/finish">
-                                Finalizar
-                            </a>
+                            <form action="{{ url('/admin/trips/' . $trip->id . '/finish') }}" method="POST"
+                                style="display:inline;">
+                                @csrf
+                                <button type="submit" class="btn btn-success">
+                                    Finalizar
+                                </button>
+                            </form>
                         @endif
 
                     </td>
