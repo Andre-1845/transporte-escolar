@@ -14,7 +14,10 @@ class TripAdminController extends Controller
 
     public function index()
     {
-        $trips = Trip::with(['route', 'bus'])
+        $schoolId = auth()->user()->school_id;
+
+        $trips = Trip::with(['route', 'bus', 'driver'])
+            ->where('school_id', $schoolId)
             ->orderBy('trip_date', 'desc')
             ->get();
 
@@ -23,9 +26,20 @@ class TripAdminController extends Controller
 
     public function create()
     {
-        $drivers = User::role('driver')->get();
-        $routes = SchoolRoute::orderBy('name')->get();
-        $buses = Bus::orderBy('plate')->get();
+        $schoolId = auth()->user()->school_id;
+
+        $drivers = User::drivers()
+            ->where('school_id', $schoolId)
+            ->orderBy('name')
+            ->get();
+
+        $routes = SchoolRoute::where('school_id', $schoolId)
+            ->orderBy('name')
+            ->get();
+
+        $buses = Bus::where('school_id', $schoolId)
+            ->orderBy('plate')
+            ->get();
 
         return view('admin.trips.create', compact(
             'drivers',
@@ -36,6 +50,13 @@ class TripAdminController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'school_route_id' => 'required',
+            'bus_id' => 'required',
+            'driver_id' => 'required',
+            'trip_date' => 'required|date',
+        ]);
+
         Trip::create([
             'school_id' => auth()->user()->school_id,
             'school_route_id' => $request->school_route_id,
@@ -46,20 +67,35 @@ class TripAdminController extends Controller
             'status' => 'scheduled'
         ]);
 
-        return redirect('/admin/trips');
+        return redirect()->route('admin.trips.index');
     }
 
     public function edit($id)
     {
-        $trip = Trip::findOrFail($id);
-        $drivers = User::role('driver')->get();
+        $schoolId = auth()->user()->school_id;
+
+        $trip = Trip::where('school_id', $schoolId)
+            ->findOrFail($id);
+
+        $drivers = User::drivers()
+            ->where('school_id', $schoolId)
+            ->orderBy('name')
+            ->get();
 
         return view('admin.trips.edit', compact('trip', 'drivers'));
     }
 
     public function update(Request $request, $id)
     {
-        $trip = Trip::findOrFail($id);
+        $schoolId = auth()->user()->school_id;
+
+        $trip = Trip::where('school_id', $schoolId)
+            ->findOrFail($id);
+
+        $request->validate([
+            'trip_date' => 'required|date',
+            'driver_id' => 'required'
+        ]);
 
         $trip->update([
             'trip_date' => $request->trip_date,
@@ -68,23 +104,33 @@ class TripAdminController extends Controller
             'driver_id' => $request->driver_id
         ]);
 
-        return redirect('/admin/trips');
+        return redirect()->route('admin.trips.index');
     }
 
     public function start($id)
     {
-        $trip = Trip::findOrFail($id);
+        $schoolId = auth()->user()->school_id;
 
-        $trip->update(['status' => 'in_progress']);
+        $trip = Trip::where('school_id', $schoolId)
+            ->findOrFail($id);
+
+        $trip->update([
+            'status' => 'in_progress'
+        ]);
 
         return back();
     }
 
     public function finish($id)
     {
-        $trip = Trip::findOrFail($id);
+        $schoolId = auth()->user()->school_id;
 
-        $trip->update(['status' => 'completed']);
+        $trip = Trip::where('school_id', $schoolId)
+            ->findOrFail($id);
+
+        $trip->update([
+            'status' => 'completed'
+        ]);
 
         return back();
     }

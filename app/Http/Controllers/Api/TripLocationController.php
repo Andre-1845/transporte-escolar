@@ -13,20 +13,6 @@ use App\Services\FirebasePushService;
 
 class TripLocationController extends Controller
 {
-    public function index($tripId)
-    {
-        $trip = Trip::findOrFail($tripId);
-
-        $locations = $trip->locations()
-            ->orderBy('recorded_at', 'asc')
-            ->limit(100) // evita sobrecarga
-            ->get();
-
-        return response()->json([
-            'data' => $locations
-        ]);
-    }
-
     public function store(Request $request, $tripId)
     {
         $request->validate([
@@ -36,15 +22,28 @@ class TripLocationController extends Controller
 
         $trip = Trip::findOrFail($tripId);
 
+        if ($trip->status !== 'in_progress') {
+            return response()->json([
+                'message' => 'Trip not active'
+            ], 400);
+        }
+
         $lat = $request->latitude;
         $lng = $request->longitude;
 
-        // buscar última localização
         $lastLocation = TripLocation::where('trip_id', $trip->id)
-            ->latest()
+            ->latest('recorded_at')
             ->first();
 
         if ($lastLocation) {
+
+            $seconds = now()->diffInSeconds($lastLocation->recorded_at);
+
+            if ($seconds < 3) {
+                return response()->json([
+                    'message' => 'Location ignored (too soon)'
+                ]);
+            }
 
             $distance = GeoHelper::distanceMeters(
                 $lat,
@@ -53,7 +52,6 @@ class TripLocationController extends Controller
                 $lastLocation->longitude
             );
 
-            // se moveu menos que 20m, não salva
             if ($distance < 20) {
                 return response()->json([
                     'message' => 'Location ignored (too close)'
@@ -61,7 +59,6 @@ class TripLocationController extends Controller
             }
         }
 
-        // salvar localização
         $location = TripLocation::create([
             'school_id' => $trip->school_id,
             'trip_id' => $trip->id,
@@ -70,7 +67,6 @@ class TripLocationController extends Controller
             'recorded_at' => now(),
         ]);
 
-        // buscar paradas da rota
         $stops = RouteStop::where('school_route_id', $trip->school_route_id)
             ->orderBy('stop_order')
             ->get();
@@ -94,34 +90,11 @@ class TripLocationController extends Controller
             }
         }
 
-        // disparar websocket
         broadcast(new TripLocationUpdated($trip, $location));
 
         return response()->json([
             'message' => 'Location recorded',
             'data' => $location
-        ]);
-    }
-
-    public function latest($id)
-    {
-        $location = \App\Models\TripLocation::where('trip_id', $id)
-            ->latest()
-            ->first();
-
-        if (!$location) {
-            return response()->json([
-                'success' => true,
-                'data' => null
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'lat' => $location->latitude,
-                'lng' => $location->longitude,
-            ]
         ]);
     }
 }

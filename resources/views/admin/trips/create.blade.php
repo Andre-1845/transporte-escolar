@@ -1,64 +1,68 @@
-<h2>Criar Trip</h2>
+@extends('layouts.admin')
 
-<form method="POST" action="/admin/trips/store">
+@section('content')
+    <h2>Criar Trip</h2>
 
-    @csrf
+    <form method="POST" action="/admin/trips/store">
 
-    <label>Rota</label>
+        @csrf
 
-    <select name="school_route_id" required>
-        <option value="">Selecione</option>
+        <label>Rota</label>
 
-        @foreach ($routes as $route)
-            <option value="{{ $route->id }}">
-                {{ $route->name }}
-            </option>
-        @endforeach
+        <select name="school_route_id" required>
+            <option value="">Selecione</option>
 
-    </select>
+            @foreach ($routes as $route)
+                <option value="{{ $route->id }}">
+                    {{ $route->name }}
+                </option>
+            @endforeach
 
-    <br><br>
+        </select>
 
-    <label>Ônibus</label>
+        <br><br>
 
-    <select name="bus_id" required>
-        <option value="">Selecione</option>
+        <label>Ônibus</label>
 
-        @foreach ($buses as $bus)
-            <option value="{{ $bus->id }}">
-                {{ $bus->plate }}
-            </option>
-        @endforeach
+        <select name="bus_id" required>
+            <option value="">Selecione</option>
 
-    </select>
+            @foreach ($buses as $bus)
+                <option value="{{ $bus->id }}">
+                    {{ $bus->plate }}
+                </option>
+            @endforeach
 
-    <br><br>
+        </select>
 
-    <label>Motorista</label>
+        <br><br>
 
-    <select name="driver_id" required>
-        <option value="">Selecione</option>
+        <label>Motorista</label>
 
-        @foreach ($drivers as $driver)
-            <option value="{{ $driver->id }}">
-                {{ $driver->name }}
-            </option>
-        @endforeach
+        <select name="driver_id" required>
+            <option value="">Selecione</option>
 
-    </select>
+            @foreach ($drivers as $driver)
+                <option value="{{ $driver->id }}">
+                    {{ $driver->name }}
+                </option>
+            @endforeach
 
-    <br><br>
+        </select>
 
-    <label>Data</label>
-    <input type="date" name="trip_date" required>
+        <br><br>
 
-    <br><br>
+        <label>Data</label>
+        <input type="date" name="trip_date" required>
 
-    <label>Horário</label>
-    <input type="time" name="start_time" required>
+        <br><br>
 
-    <br><br>
+        <label>Horário</label>
+        <input type="time" name="start_time" required>
 
-    <button type="submit">Criar Trip</button>
+        <br><br>
 
-</form>
+        <button type="submit">Criar Trip</button>
+
+    </form>
+@endsection

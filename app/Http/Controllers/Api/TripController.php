@@ -47,6 +47,12 @@ class TripController extends Controller
     {
         $trip = Trip::findOrFail($id);
 
+        if (!auth()->user()->hasRole('driver')) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
         if ($trip->status !== 'scheduled') {
             return response()->json([
                 'success' => false,
@@ -54,10 +60,16 @@ class TripController extends Controller
             ], 400);
         }
 
-        // Apenas uma trip ativa por ônibus
-        Trip::where('bus_id', $trip->bus_id)
+        $activeTrip = Trip::where('driver_id', auth()->id())
             ->where('status', 'in_progress')
-            ->update(['status' => 'completed']);
+            ->first();
+
+        if ($activeTrip) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Driver already has active trip'
+            ], 409);
+        }
 
         $trip->update([
             'status' => 'in_progress'
@@ -66,7 +78,9 @@ class TripController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Trip started',
-            'data' => new TripResource($trip->load(['bus', 'route.points', 'route.stops']))
+            'data' => new TripResource(
+                $trip->load(['bus', 'route.points', 'route.stops'])
+            )
         ]);
     }
 
@@ -88,7 +102,9 @@ class TripController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Trip finished',
-            'data' => new TripResource($trip->load(['bus', 'route.points', 'route.stops']))
+            'data' => new TripResource(
+                $trip->load(['bus', 'route.points', 'route.stops'])
+            )
         ]);
     }
 
@@ -141,7 +157,7 @@ class TripController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $trip
+            'data' => $trip ? new TripResource($trip) : null
         ]);
     }
 
@@ -157,7 +173,7 @@ class TripController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Trip atualizada',
-            'data' => $trip
+            'data' => new TripResource($trip)
         ]);
     }
 
@@ -175,21 +191,7 @@ class TripController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Trip criada',
-            'data' => $trip
-        ]);
-    }
-
-    public function reset($id)
-    {
-        $trip = Trip::findOrFail($id);
-
-        $trip->update([
-            'status' => 'scheduled'
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Trip resetada'
+            'data' => new TripResource($trip)
         ]);
     }
 }

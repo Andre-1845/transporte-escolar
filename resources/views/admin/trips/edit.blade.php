@@ -1,43 +1,47 @@
-<h2>Editar Trip</h2>
+@extends('layouts.admin')
 
-<form method="POST" action="/admin/trips/{{ $trip->id }}/update">
+@section('content')
+    <h2>Editar Trip</h2>
 
-    @csrf
+    <form method="POST" action="/admin/trips/{{ $trip->id }}/update">
 
-    <label>Data</label>
-    <input type="date" name="trip_date" value="{{ $trip->date }}">
+        @csrf
 
-    <br><br>
+        <label>Data</label>
+        <input type="date" name="trip_date" value="{{ $trip->date }}">
 
-    <label>Horário</label>
-    <input type="time" name="start_time" value="{{ $trip->start_time }}" required>
-    <br><br>
-    <label>Status</label>
+        <br><br>
 
-    <select name="status">
+        <label>Horário</label>
+        <input type="time" name="start_time" value="{{ $trip->start_time }}" required>
+        <br><br>
+        <label>Status</label>
 
-        <option value="scheduled">scheduled</option>
-        <option value="in_progress">in_progress</option>
-        <option value="completed">completed</option>
-        <option value="cancelled">cancelled</option>
+        <select name="status">
 
-    </select>
-    <br><br>
-    <label>Motorista</label>
+            <option value="scheduled">scheduled</option>
+            <option value="in_progress">in_progress</option>
+            <option value="completed">completed</option>
+            <option value="cancelled">cancelled</option>
 
-    <select name="driver_id" required>
-        <option value="">Selecione</option>
+        </select>
+        <br><br>
+        <label>Motorista</label>
 
-        @foreach ($drivers as $driver)
-            <option value="{{ $driver->id }}">
-                {{ $driver->name }}
-            </option>
-        @endforeach
+        <select name="driver_id" required>
+            <option value="">Selecione</option>
 
-    </select>
+            @foreach ($drivers as $driver)
+                <option value="{{ $driver->id }}">
+                    {{ $driver->name }}
+                </option>
+            @endforeach
 
-    <br><br>
+        </select>
 
-    <button>Salvar</button>
+        <br><br>
 
-</form>
+        <button>Salvar</button>
+
+    </form>
+@endsection

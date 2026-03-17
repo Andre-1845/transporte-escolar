@@ -30,15 +30,11 @@ class Trip extends Model
         return $date->format('Y-m-d');
     }
 
-    protected static function booted()
-    {
-        static::creating(function ($trip) {
-
-            if (!$trip->school_id) {
-                $trip->school_id = auth()->user()->school_id;
-            }
-        });
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | RELATIONSHIPS
+    |--------------------------------------------------------------------------
+    */
 
     public function bus()
     {
@@ -58,6 +54,12 @@ class Trip extends Model
     public function locations()
     {
         return $this->hasMany(TripLocation::class)
-            ->orderBy('recorded_at');
+            ->orderBy('recorded_at', 'asc');
+    }
+
+    public function latestLocation()
+    {
+        return $this->hasOne(TripLocation::class)
+            ->latestOfMany('recorded_at');
     }
 }
