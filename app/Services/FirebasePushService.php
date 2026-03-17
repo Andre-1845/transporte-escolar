@@ -3,17 +3,23 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use App\Models\User;
+use App\Models\RouteStop;
 
 class FirebasePushService
 {
     public static function sendToStop($stopId, $title, $message)
     {
-        $users = User::where('route_stop_id', $stopId)->get();
+        $stop = RouteStop::with('users')->find($stopId);
 
-        foreach ($users as $user) {
+        if (!$stop) {
+            return;
+        }
 
-            if (!$user->fcm_token) continue;
+        foreach ($stop->users as $user) {
+
+            if (!$user->fcm_token) {
+                continue;
+            }
 
             Http::withToken(config('services.firebase.server_key'))
                 ->post('https://fcm.googleapis.com/fcm/send', [

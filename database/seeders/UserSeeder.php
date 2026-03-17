@@ -10,10 +10,19 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        $admin = User::create([
+            'school_id' => 1,
+            'name' => 'Admin',
+            'email' => 'admin@teste',
+            'password' => Hash::make('123456')
+        ]);
+
+        $admin->assignRole('admin');
+
         $driver = User::create([
             'school_id' => 1,
             'name' => 'Motorista Teste',
-            'email' => 'motorista@teste.com',
+            'email' => 'motorista@teste',
             'password' => Hash::make('123456')
         ]);
 
@@ -22,7 +31,7 @@ class UserSeeder extends Seeder
         $student = User::create([
             'school_id' => 1,
             'name' => 'Aluno Teste',
-            'email' => 'aluno@teste.com',
+            'email' => 'aluno@teste',
             'password' => Hash::make('123456')
         ]);
 
