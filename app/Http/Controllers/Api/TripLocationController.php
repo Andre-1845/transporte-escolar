@@ -97,4 +97,21 @@ class TripLocationController extends Controller
             'data' => $location
         ]);
     }
+
+    public function latest($tripId)
+    {
+        $trip = Trip::with('latestLocation')->findOrFail($tripId);
+
+        if (!$trip->latestLocation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No location yet'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $trip->latestLocation
+        ]);
+    }
 }
