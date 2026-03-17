@@ -12,7 +12,7 @@ class BusResource extends JsonResource
         return [
             'id' => $this->id,
             'plate' => $this->plate,
-            'name' => $this->name,
+            'model' => $this->model,
             'capacity' => $this->capacity,
             'active' => $this->active,
         ];
