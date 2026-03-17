@@ -149,7 +149,13 @@ class TripController extends Controller
             ], 403);
         }
 
-        $trip = Trip::where('school_id', $user->school_id)
+        $trip = Trip::with([
+            'bus',
+            'route',
+            'route.points',
+            'route.stops'
+        ])
+            ->where('school_id', $user->school_id)
             ->where('driver_id', $user->id)
             ->whereDate('trip_date', today())
             ->where('status', 'scheduled')
