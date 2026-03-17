@@ -90,7 +90,7 @@ class TripLocationController extends Controller
             }
         }
 
-        broadcast(new TripLocationUpdated($trip, $location));
+        //broadcast(new TripLocationUpdated($trip, $location));
 
         return response()->json([
             'message' => 'Location recorded',
