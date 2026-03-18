@@ -16,7 +16,8 @@ return new class extends Migration
 
             $table->foreignId('school_id')
                 ->constrained()
-                ->cascadeOnDelete();
+                ->cascadeOnDelete()
+                ->index();
 
             $table->foreignId('bus_id')
                 ->constrained()
@@ -26,14 +27,23 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->date('trip_date');
+            $table->unsignedBigInteger('driver_id')->nullable();
+
+            $table->foreign('driver_id')
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
+
+            $table->index('driver_id');
+
+            $table->date('trip_date')->index();
 
             $table->enum('status', [
                 'scheduled',
                 'in_progress',
-                'completed',
+                'finished',
                 'cancelled'
-            ])->default('scheduled');
+            ])->default('scheduled')->index();
 
             $table->timestamps();
         });
