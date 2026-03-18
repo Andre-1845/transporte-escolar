@@ -43,4 +43,9 @@ class RouteStop extends Model
             'user_route_stops'
         );
     }
+
+    public function alertStudents()
+    {
+        return $this->hasMany(StudentAlertPoint::class, 'route_stop_id');
+    }
 }

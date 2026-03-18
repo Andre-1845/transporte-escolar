@@ -69,6 +69,11 @@ class User extends Authenticatable
         );
     }
 
+    public function alertPoint()
+    {
+        return $this->hasOne(StudentAlertPoint::class, 'student_id');
+    }
+
     public function scopeDrivers($query)
     {
         return $query->whereHas('roles', function ($q) {
