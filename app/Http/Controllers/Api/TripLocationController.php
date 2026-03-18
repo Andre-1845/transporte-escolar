@@ -44,12 +44,12 @@ class TripLocationController extends Controller
 
             $seconds = now()->diffInSeconds($lastLocation->recorded_at);
 
-            if ($seconds < 3) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Location ignored (too soon)'
-                ]);
-            }
+            // if ($seconds < 3) {
+            //     return response()->json([
+            //         'success' => true,
+            //         'message' => 'Location ignored (too soon)'
+            //     ]);
+            // }
 
             $distance = GeoHelper::distanceMeters(
                 $lat,
@@ -58,12 +58,12 @@ class TripLocationController extends Controller
                 $lastLocation->longitude
             );
 
-            if ($distance < 20) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Location ignored (too close)'
-                ]);
-            }
+            // if ($distance < 20) {
+            //     return response()->json([
+            //         'success' => true,
+            //         'message' => 'Location ignored (too close)'
+            //     ]);
+            // }
         }
 
         // ===============================
