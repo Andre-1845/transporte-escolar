@@ -21,7 +21,7 @@
 
             <option value="scheduled">scheduled</option>
             <option value="in_progress">in_progress</option>
-            <option value="completed">completed</option>
+            <option value="completed">finished</option>
             <option value="cancelled">cancelled</option>
 
         </select>
