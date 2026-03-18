@@ -43,15 +43,9 @@ class TripController extends Controller
         ]);
     }
 
-    public function start($id)
+    public function start(Request $request, $id)
     {
-        $trip = Trip::findOrFail($id);
-
-        if (!auth()->user()->hasRole('driver')) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 403);
-        }
+        $trip = Trip::with('route.stops')->findOrFail($id);
 
         if ($trip->status !== 'scheduled') {
             return response()->json([
@@ -60,15 +54,27 @@ class TripController extends Controller
             ], 400);
         }
 
-        $activeTrip = Trip::where('driver_id', auth()->id())
-            ->where('status', 'in_progress')
+        $firstStop = $trip->route->stops
+            ->sortBy('stop_order')
             ->first();
 
-        if ($activeTrip) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Driver already has active trip'
-            ], 409);
+        if ($firstStop && !$request->force_start) {
+
+            $distance = GeoHelper::distanceMeters(
+                $request->latitude,
+                $request->longitude,
+                $firstStop->latitude,
+                $firstStop->longitude
+            );
+
+            if ($distance > 200) {
+
+                return response()->json([
+                    'success' => false,
+                    'confirm_required' => true,
+                    'message' => 'Você está distante do ponto inicial. Confirmar início da viagem?'
+                ]);
+            }
         }
 
         $trip->update([
@@ -77,16 +83,21 @@ class TripController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Trip started',
-            'data' => new TripResource(
-                $trip->load(['bus', 'route.points', 'route.stops'])
-            )
+            'message' => 'Trip started'
         ]);
     }
 
     public function finish($id)
     {
         $trip = Trip::findOrFail($id);
+
+        $user = auth()->user();
+
+        if ($trip->driver_id !== $user->id) {
+            return response()->json([
+                'message' => 'Driver not assigned to this trip'
+            ], 403);
+        }
 
         if ($trip->status !== 'in_progress') {
             return response()->json([
@@ -96,7 +107,7 @@ class TripController extends Controller
         }
 
         $trip->update([
-            'status' => 'completed'
+            'status' => 'finished'
         ]);
 
         return response()->json([
@@ -158,7 +169,7 @@ class TripController extends Controller
             ->where('school_id', $user->school_id)
             ->where('driver_id', $user->id)
             ->whereDate('trip_date', today())
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'in_progress'])
             ->first();
 
         return response()->json([
