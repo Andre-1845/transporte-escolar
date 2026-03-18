@@ -16,7 +16,7 @@ class RoutePointSeeder extends Seeder
                 'name' => 'Ponto 1 - Centro',
                 'latitude' => -22.4705000,
                 'longitude' => -44.4500000,
-                'order' => 1,
+                'point_order' => 1,
                 'estimated_time' => '07:00:00',
                 'created_at' => now(),
                 'updated_at' => now()
