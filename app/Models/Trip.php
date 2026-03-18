@@ -62,4 +62,9 @@ class Trip extends Model
         return $this->hasOne(TripLocation::class)
             ->latestOfMany('recorded_at');
     }
+
+    public function stopAlerts()
+    {
+        return $this->hasMany(TripStopAlert::class);
+    }
 }

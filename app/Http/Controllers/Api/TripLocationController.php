@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Events\TripLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Models\TripLocation;
-use Illuminate\Http\Request;
 use App\Models\RouteStop;
+use App\Models\StudentAlertPoint;
+use App\Models\TripStopAlert;
+use Illuminate\Http\Request;
 use App\Helpers\GeoHelper;
 use App\Services\FirebasePushService;
 
@@ -24,6 +25,7 @@ class TripLocationController extends Controller
 
         if ($trip->status !== 'in_progress') {
             return response()->json([
+                'success' => false,
                 'message' => 'Trip not active'
             ], 400);
         }
@@ -31,6 +33,9 @@ class TripLocationController extends Controller
         $lat = $request->latitude;
         $lng = $request->longitude;
 
+        // ===============================
+        // EVITAR SPAM DE LOCALIZAÇÃO
+        // ===============================
         $lastLocation = TripLocation::where('trip_id', $trip->id)
             ->latest('recorded_at')
             ->first();
@@ -41,6 +46,7 @@ class TripLocationController extends Controller
 
             if ($seconds < 3) {
                 return response()->json([
+                    'success' => true,
                     'message' => 'Location ignored (too soon)'
                 ]);
             }
@@ -54,11 +60,15 @@ class TripLocationController extends Controller
 
             if ($distance < 20) {
                 return response()->json([
+                    'success' => true,
                     'message' => 'Location ignored (too close)'
                 ]);
             }
         }
 
+        // ===============================
+        // SALVAR LOCALIZAÇÃO
+        // ===============================
         $location = TripLocation::create([
             'school_id' => $trip->school_id,
             'trip_id' => $trip->id,
@@ -67,9 +77,14 @@ class TripLocationController extends Controller
             'recorded_at' => now(),
         ]);
 
+        // ===============================
+        // BUSCAR STOPS
+        // ===============================
         $stops = RouteStop::where('school_route_id', $trip->school_route_id)
             ->orderBy('stop_order')
             ->get();
+
+        $approachingEnd = false;
 
         foreach ($stops as $stop) {
 
@@ -80,21 +95,79 @@ class TripLocationController extends Controller
                 $stop->longitude
             );
 
-            if ($distance <= $stop->radius_meters) {
+            if ($distance > $stop->radius_meters) {
+                continue;
+            }
 
-                FirebasePushService::sendToStop(
-                    $stop->id,
+            // ===============================
+            // ATUALIZA LAST STOP
+            // ===============================
+            if (
+                !$trip->last_stop_order ||
+                $stop->stop_order > $trip->last_stop_order
+            ) {
+                $trip->update([
+                    'last_stop_order' => $stop->stop_order
+                ]);
+            }
+
+            // ===============================
+            // ALERTA DE FIM DE VIAGEM
+            // ===============================
+            $isLastStop = $stop->stop_order === $stops->last()->stop_order;
+
+            if ($isLastStop && !$trip->end_warning_sent) {
+                $trip->update([
+                    'end_warning_sent' => true
+                ]);
+
+                $approachingEnd = true;
+            }
+
+            // ===============================
+            // ALERTA PARA ALUNOS (ANTI-SPAM)
+            // ===============================
+            if (!$stop->allow_student_alert) {
+                continue;
+            }
+
+            $alerts = StudentAlertPoint::where('route_stop_id', $stop->id)
+                ->where('enabled', true)
+                ->get();
+
+            foreach ($alerts as $alert) {
+
+                $alreadySent = TripStopAlert::where('trip_id', $trip->id)
+                    ->where('student_id', $alert->student_id)
+                    ->exists();
+
+                if ($alreadySent) {
+                    continue;
+                }
+
+                FirebasePushService::sendToUser(
+                    $alert->student_id,
                     "🚌 Seu ônibus está chegando",
                     "Parada: {$stop->name}"
                 );
+
+                TripStopAlert::create([
+                    'trip_id' => $trip->id,
+                    'student_id' => $alert->student_id,
+                    'route_stop_id' => $stop->id,
+                    'sent_at' => now()
+                ]);
             }
         }
 
-        //broadcast(new TripLocationUpdated($trip, $location));
-
         return response()->json([
-            'message' => 'Location recorded',
-            'data' => $location
+            'success' => true,
+            'approaching_end' => $approachingEnd,
+            'data' => [
+                'lat' => $location->latitude,
+                'lng' => $location->longitude,
+                'recorded_at' => $location->recorded_at
+            ]
         ]);
     }
 
@@ -104,14 +177,18 @@ class TripLocationController extends Controller
 
         if (!$trip->latestLocation) {
             return response()->json([
-                'success' => false,
-                'message' => 'No location yet'
+                'success' => true,
+                'data' => null
             ]);
         }
 
         return response()->json([
             'success' => true,
-            'data' => $trip->latestLocation
+            'data' => [
+                'lat' => $trip->latestLocation->latitude,
+                'lng' => $trip->latestLocation->longitude,
+                'recorded_at' => $trip->latestLocation->recorded_at
+            ]
         ]);
     }
 }
