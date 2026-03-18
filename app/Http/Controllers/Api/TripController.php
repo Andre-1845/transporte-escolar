@@ -7,6 +7,7 @@ use App\Http\Resources\TripResource;
 use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\GeoHelper;
 
 class TripController extends Controller
 {
