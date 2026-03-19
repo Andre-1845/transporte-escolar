@@ -212,4 +212,35 @@ class TripController extends Controller
             'data' => new TripResource($trip)
         ]);
     }
+
+    public function todayTripsForDriver()
+    {
+        $user = auth()->user();
+
+        if (!$user->hasRole('driver')) {
+            return response()->json([
+                'message' => 'Acesso negado'
+            ], 403);
+        }
+
+        $today = today();
+
+        $trips = Trip::with([
+            'bus',
+            'route',
+            'route.points',
+            'route.stops'
+        ])
+            ->where('school_id', $user->school_id)
+            ->where('driver_id', $user->id)
+            ->whereDate('trip_date', $today)
+            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => TripResource::collection($trips)
+        ]);
+    }
 }

@@ -23,6 +23,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/trips', [TripController::class, 'store']);
         Route::get('/trips/active', [TripController::class, 'active']);
         Route::get('/trips/today', [TripController::class, 'todayTrips']);
+        Route::get('/driver/today-trips', [TripController::class, 'todayTripsForDriver']);
         Route::get('/trips/{id}', [TripController::class, 'show']);
         Route::put('/trips/{id}', [TripController::class, 'update']);
         Route::post('/trips/{id}/location', [TripLocationController::class, 'store']);
