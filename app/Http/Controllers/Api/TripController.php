@@ -234,7 +234,7 @@ class TripController extends Controller
             ->where('school_id', $user->school_id)
             ->where('driver_id', $user->id)
             ->whereDate('trip_date', $today)
-            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->whereIn('status', ['scheduled', 'in_progress', 'finished'])
             ->orderBy('start_time')
             ->get();
 
