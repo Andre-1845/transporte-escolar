@@ -8,6 +8,7 @@ use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\GeoHelper;
+use Illuminate\Support\Facades\DB;
 
 class TripController extends Controller
 {
@@ -46,46 +47,81 @@ class TripController extends Controller
 
     public function start(Request $request, $id)
     {
-        $trip = Trip::with('route.stops')->findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
 
-        if (!in_array($trip->status, ['scheduled', 'finished'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trip cannot be started'
-            ], 400);
-        }
+            // 🔒 LOCK NA TRIP
+            $trip = Trip::where('id', $id)
+                ->lockForUpdate()
+                ->with('route.stops')
+                ->firstOrFail();
 
-        $firstStop = $trip->route->stops
-            ->sortBy('stop_order')
-            ->first();
-
-        if ($firstStop && !$request->force_start) {
-
-            $distance = GeoHelper::distanceMeters(
-                $request->latitude,
-                $request->longitude,
-                $firstStop->latitude,
-                $firstStop->longitude
-            );
-
-            if ($distance > 200) {
-
+            // 🚫 Status inválido
+            if (!in_array($trip->status, ['scheduled', 'finished'])) {
                 return response()->json([
                     'success' => false,
-                    'confirm_required' => true,
-                    'message' => 'Você está distante do ponto inicial. Confirmar início da viagem?'
-                ]);
+                    'message' => 'Trip cannot be started'
+                ], 400);
             }
-        }
 
-        $trip->update([
-            'status' => 'in_progress'
-        ]);
+            // 🚫 DRIVER já em viagem
+            $driverBusy = Trip::where('driver_id', $trip->driver_id)
+                ->where('status', 'in_progress')
+                ->lockForUpdate()
+                ->exists();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Trip started'
-        ]);
+            if ($driverBusy) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Motorista já possui uma viagem em andamento'
+                ], 400);
+            }
+
+            // 🚫 BUS já em uso
+            $busBusy = Trip::where('bus_id', $trip->bus_id)
+                ->where('status', 'in_progress')
+                ->lockForUpdate()
+                ->exists();
+
+            if ($busBusy) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ônibus já está em uso'
+                ], 400);
+            }
+
+            // 📍 Validação de distância
+            $firstStop = $trip->route->stops
+                ->sortBy('stop_order')
+                ->first();
+
+            if ($firstStop && !$request->force_start) {
+
+                $distance = GeoHelper::distanceMeters(
+                    $request->latitude,
+                    $request->longitude,
+                    $firstStop->latitude,
+                    $firstStop->longitude
+                );
+
+                if ($distance > 200) {
+                    return response()->json([
+                        'success' => false,
+                        'confirm_required' => true,
+                        'message' => 'Você está distante do ponto inicial. Confirmar início da viagem?'
+                    ], 200); // 🔥 IMPORTANTE: não é erro
+                }
+            }
+
+            // ✅ INICIA VIAGEM
+            $trip->update([
+                'status' => 'in_progress'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Trip started'
+            ]);
+        });
     }
 
     public function finish($id)

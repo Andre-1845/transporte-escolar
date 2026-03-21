@@ -7,6 +7,21 @@
 
         @csrf
 
+        <label>Rota</label>
+
+        <select name="school_route_id" required>
+            <option value="">Selecione</option>
+
+            @foreach ($routes as $route)
+                <option value="{{ $route->id }}">
+                    {{ $route->name }}
+                </option>
+            @endforeach
+
+        </select>
+
+        <br><br>
+
         <label>Data</label>
         <input type="date" name="trip_date" value="{{ $trip->date }}">
 
@@ -40,6 +55,22 @@
         </select>
 
         <br><br>
+
+        <label>Ônibus</label>
+
+        <select name="bus_id" required>
+            <option value="">Selecione</option>
+
+            @foreach ($buses as $bus)
+                <option value="{{ $bus->id }}">
+                    {{ $bus->plate }}
+                </option>
+            @endforeach
+
+        </select>
+
+        <br>
+        <hr>
 
         <button>Salvar</button>
 

@@ -82,7 +82,15 @@ class TripAdminController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.trips.edit', compact('trip', 'drivers'));
+        $routes = SchoolRoute::where('school_id', $schoolId)
+            ->orderBy('name')
+            ->get();
+
+        $buses = Bus::where('school_id', $schoolId)
+            ->orderBy('plate')
+            ->get();
+
+        return view('admin.trips.edit', compact('trip', 'drivers', 'buses', 'routes'));
     }
 
     public function update(Request $request, $id)
