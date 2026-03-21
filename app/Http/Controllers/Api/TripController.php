@@ -48,7 +48,7 @@ class TripController extends Controller
     {
         $trip = Trip::with('route.stops')->findOrFail($id);
 
-        if ($trip->status !== 'scheduled') {
+        if (!in_array($trip->status, ['scheduled', 'finished'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Trip cannot be started'
