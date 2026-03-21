@@ -14,6 +14,7 @@
                 <th>ID</th>
                 <th>Rota</th>
                 <th>Motorista</th>
+                <th>Veículo</th>
                 <th>Data</th>
                 <th>Hora</th>
                 <th>Status</th>
@@ -37,7 +38,11 @@
                     </td>
 
                     <td>
-                        {{ $trip->trip_date }}
+                        {{ $trip->bus?->plate }}
+                    </td>
+
+                    <td>
+                        {{ \Carbon\Carbon::parse($trip->trip_date)->format('d/m/Y') }}
                     </td>
 
                     <td>
