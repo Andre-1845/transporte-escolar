@@ -219,10 +219,13 @@ class TripController extends Controller
     {
         $trip = Trip::findOrFail($id);
 
-        $error = $this->checkConflicts($request);
+        $error = $this->checkConflicts($request, $id);
 
         if ($error) {
-            return redirect()->back()->with('error', $error);
+            return response()->json([
+                'success' => false,
+                'message' => $error
+            ], 400);
         }
 
         $trip->update([
@@ -234,7 +237,11 @@ class TripController extends Controller
             'status' => $request->status,
         ]);
 
-        return redirect()->back()->with('success', 'Trip atualizada com sucesso');
+        return response()->json([
+            'success' => true,
+            'message' => 'Trip atualizada',
+            'data' => new TripResource($trip)
+        ]);
     }
 
     public function store(Request $request)
@@ -242,7 +249,10 @@ class TripController extends Controller
         $error = $this->checkConflicts($request);
 
         if ($error) {
-            return redirect()->back()->with('error', $error);
+            return response()->json([
+                'success' => false,
+                'message' => $error
+            ], 400);
         }
 
         $trip = Trip::create([

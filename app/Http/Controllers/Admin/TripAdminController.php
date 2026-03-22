@@ -55,7 +55,14 @@ class TripAdminController extends Controller
             'bus_id' => 'required',
             'driver_id' => 'required',
             'trip_date' => 'required|date',
+            'start_time' => 'required'
         ]);
+
+        $error = $this->checkConflicts($request);
+
+        if ($error) {
+            return redirect()->back()->with('error', $error)->withInput();
+        }
 
         Trip::create([
             'school_id' => auth()->user()->school_id,
@@ -102,14 +109,25 @@ class TripAdminController extends Controller
 
         $request->validate([
             'trip_date' => 'required|date',
-            'driver_id' => 'required'
+            'start_time' => 'required',
+            'driver_id' => 'required',
+            'bus_id' => 'required',
+            'school_route_id' => 'required',
         ]);
 
+        $error = $this->checkConflicts($request, $id);
+
+        if ($error) {
+            return redirect()->back()->with('error', $error)->withInput();
+        }
+
         $trip->update([
+            'school_route_id' => $request->school_route_id,
+            'bus_id' => $request->bus_id,
+            'driver_id' => $request->driver_id,
             'trip_date' => $request->trip_date,
             'start_time' => $request->start_time,
             'status' => $request->status,
-            'driver_id' => $request->driver_id
         ]);
 
         return redirect()->route('admin.trips.index');
@@ -141,5 +159,31 @@ class TripAdminController extends Controller
         ]);
 
         return back();
+    }
+
+    private function checkConflicts($request, $ignoreTripId = null)
+    {
+        $queryDriver = Trip::where('trip_date', $request->trip_date)
+            ->where('start_time', $request->start_time)
+            ->where('driver_id', $request->driver_id);
+
+        $queryBus = Trip::where('trip_date', $request->trip_date)
+            ->where('start_time', $request->start_time)
+            ->where('bus_id', $request->bus_id);
+
+        if ($ignoreTripId) {
+            $queryDriver->where('id', '!=', $ignoreTripId);
+            $queryBus->where('id', '!=', $ignoreTripId);
+        }
+
+        if ($queryDriver->exists()) {
+            return "Motorista já possui uma viagem nesse horário";
+        }
+
+        if ($queryBus->exists()) {
+            return "Ônibus já está em uso nesse horário";
+        }
+
+        return null;
     }
 }
