@@ -13,7 +13,7 @@
             <option value="">Selecione</option>
 
             @foreach ($routes as $route)
-                <option value="{{ $route->id }}">
+                <option value="{{ $route->id }}" {{ $trip->school_route_id == $route->id ? 'selected' : '' }}>
                     {{ $route->name }}
                 </option>
             @endforeach
@@ -23,7 +23,7 @@
         <br><br>
 
         <label>Data</label>
-        <input type="date" name="trip_date" value="{{ $trip->date }}">
+        <input type="date" name="trip_date" value="{{ $trip->trip_date }}">
 
         <br><br>
 
@@ -34,10 +34,10 @@
 
         <select name="status">
 
-            <option value="scheduled">scheduled</option>
-            <option value="in_progress">in_progress</option>
-            <option value="completed">finished</option>
-            <option value="cancelled">cancelled</option>
+            <option value="scheduled" {{ $trip->status == 'scheduled' ? 'selected' : '' }}>scheduled</option>
+            <option value="in_progress" {{ $trip->status == 'in_progress' ? 'selected' : '' }}>in_progress</option>
+            <option value="finished" {{ $trip->status == 'finished' ? 'selected' : '' }}>finished</option>
+            <option value="cancelled" {{ $trip->status == 'cancelled' ? 'selected' : '' }}>cancelled</option>
 
         </select>
         <br><br>
@@ -47,7 +47,7 @@
             <option value="">Selecione</option>
 
             @foreach ($drivers as $driver)
-                <option value="{{ $driver->id }}">
+                <option value="{{ $driver->id }}" {{ $trip->driver_id == $driver->id ? 'selected' : '' }}>
                     {{ $driver->name }}
                 </option>
             @endforeach
@@ -62,7 +62,7 @@
             <option value="">Selecione</option>
 
             @foreach ($buses as $bus)
-                <option value="{{ $bus->id }}">
+                <option value="{{ $bus->id }}" {{ $trip->bus_id == $bus->id ? 'selected' : '' }}>
                     {{ $bus->plate }}
                 </option>
             @endforeach
