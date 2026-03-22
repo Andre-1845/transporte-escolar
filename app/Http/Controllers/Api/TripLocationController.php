@@ -11,6 +11,8 @@ use App\Models\TripStopAlert;
 use Illuminate\Http\Request;
 use App\Helpers\GeoHelper;
 use App\Services\FirebasePushService;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class TripLocationController extends Controller
 {
@@ -158,6 +160,14 @@ class TripLocationController extends Controller
                     'sent_at' => now()
                 ]);
             }
+        }
+
+        // 🔥 LIMPEZA AUTOMÁTICA (1x por hora)
+        if (rand(1, 100) === 1) { // 1% das requisições
+            DB::table('trip_locations')
+                ->where('recorded_at', '<', Carbon::now()->subDays(5))
+                ->limit(1000)
+                ->delete();
         }
 
         return response()->json([
