@@ -173,7 +173,7 @@ class TripLocationController extends Controller
 
     public function latest($tripId)
     {
-        $trip = Trip::with('latestLocation')->findOrFail($tripId);
+        $trip = Trip::with(['latestLocation'])->findOrFail($tripId);
 
         if (!$trip->latestLocation) {
             return response()->json([
@@ -182,12 +182,51 @@ class TripLocationController extends Controller
             ]);
         }
 
+        $lat = $trip->latestLocation->latitude;
+        $lng = $trip->latestLocation->longitude;
+
+        // 🔥 BUSCAR STOPS
+        $stops = RouteStop::where('school_route_id', $trip->school_route_id)
+            ->orderBy('stop_order')
+            ->get();
+
+        $nextStop = null;
+        $minDistance = null;
+
+        foreach ($stops as $stop) {
+
+            $distance = GeoHelper::distanceMeters(
+                $lat,
+                $lng,
+                $stop->latitude,
+                $stop->longitude
+            );
+
+            // 🔥 IGNORA STOPS JÁ PASSADOS
+            if ($trip->last_stop_order && $stop->stop_order <= $trip->last_stop_order) {
+                continue;
+            }
+
+            if ($minDistance === null || $distance < $minDistance) {
+                $minDistance = $distance;
+                $nextStop = $stop;
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
-                'lat' => $trip->latestLocation->latitude,
-                'lng' => $trip->latestLocation->longitude,
-                'recorded_at' => $trip->latestLocation->recorded_at
+                'lat' => $lat,
+                'lng' => $lng,
+                'recorded_at' => $trip->latestLocation->recorded_at,
+
+                // 🔥 NOVOS CAMPOS
+                'distance' => $minDistance,
+                'next_stop' => $nextStop ? [
+                    'id' => $nextStop->id,
+                    'name' => $nextStop->name,
+                    'order' => $nextStop->stop_order,
+                ] : null,
             ]
         ]);
     }
