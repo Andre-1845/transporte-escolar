@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\BusController;
 use App\Http\Controllers\Api\SchoolRouteController;
 use App\Http\Controllers\Api\TripController;
 use App\Http\Controllers\Api\TripLocationController;
+use App\Models\Trip;
+
 
 Route::prefix('v1')->group(function () {
 

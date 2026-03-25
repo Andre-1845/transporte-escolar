@@ -35,9 +35,7 @@ class TripLocationController extends Controller
         $lat = $request->latitude;
         $lng = $request->longitude;
 
-        // ===============================
         // 📍 SALVAR LOCALIZAÇÃO
-        // ===============================
         $location = TripLocation::create([
             'school_id' => $trip->school_id,
             'trip_id' => $trip->id,
@@ -57,15 +55,11 @@ class TripLocationController extends Controller
 
         $lastStopOrder = $stops->max('stop_order');
 
-        // ===============================
         // 🏁 FINAL DE ROTA
-        // ===============================
         if ($trip->current_stop_order > $lastStopOrder) {
-
             $trip->update([
                 'status' => 'finished'
             ]);
-
             return response()->json(['success' => true]);
         }
 
@@ -75,9 +69,7 @@ class TripLocationController extends Controller
             return response()->json(['success' => true]);
         }
 
-        // ===============================
         // 📏 DISTÂNCIA
-        // ===============================
         $distance = GeoHelper::distanceMeters(
             $lat,
             $lng,
@@ -91,16 +83,11 @@ class TripLocationController extends Controller
         $shouldUpdate = false;
         $approachingEnd = false;
 
-        // ===============================
-        // 🚀 PRIMEIRA LEITURA
-        // ===============================
-        if (!$lastDistance) {
-            $data['last_distance'] = $distance;
-            $shouldUpdate = true;
-        }
+        // Flag para controlar se já avançamos neste request
+        $advancedToNextStop = false;
 
         // ===============================
-        // 🚀 APROXIMAÇÃO
+        // 🚀 APROXIMAÇÃO (quando está se aproximando)
         // ===============================
         if ($lastDistance && $distance < $lastDistance) {
             $data['approaching_stop'] = true;
@@ -108,9 +95,15 @@ class TripLocationController extends Controller
         }
 
         // ===============================
-        // 🚀 CHEGADA REAL
+        // 🚀 CHEGADA NO PONTO
         // ===============================
-        if ($trip->approaching_stop && $distance < 40 && !$trip->arrived_at_stop) {
+        // Chegou se:
+        // 1. Ainda não marcou como arrived
+        // 2. Distância menor que o raio do ponto OU menor que 40 metros
+        $arrivalRadius = $currentStop->radius_meters ?? 200;
+        $isWithinArrivalRadius = $distance <= $arrivalRadius;
+
+        if (!$trip->arrived_at_stop && $isWithinArrivalRadius) {
 
             $now = now();
 
@@ -120,6 +113,7 @@ class TripLocationController extends Controller
                 $trip->last_stop_id &&
                 $trip->last_stop_id != $currentStop->id
             ) {
+
                 $timeSpent = $now->diffInSeconds($trip->last_stop_at);
 
                 $this->updateStopMetrics(
@@ -134,73 +128,103 @@ class TripLocationController extends Controller
             $data['last_stop_at'] = $now;
             $data['last_stop_id'] = $currentStop->id;
 
+            // 🔥 NOVA LÓGICA: Avança para o próximo stop IMEDIATAMENTE
+            $nextStopOrder = $trip->current_stop_order + 1;
+
+            // Verifica se existe próximo stop
+            $nextStopExists = $stops->contains('stop_order', $nextStopOrder);
+
+            if ($nextStopExists) {
+                // Avança para o próximo stop
+                $data['current_stop_order'] = $nextStopOrder;
+                $data['arrived_at_stop'] = false;  // Reseta para o próximo stop
+                $data['approaching_stop'] = false; // Reseta flag de aproximação
+
+                $advancedToNextStop = true;
+
+                // Log para debug
+                \Log::info('Stop avançado', [
+                    'trip_id' => $trip->id,
+                    'from_stop' => $trip->current_stop_order,
+                    'to_stop' => $nextStopOrder,
+                    'distance' => $distance,
+                    'radius' => $arrivalRadius
+                ]);
+            } else {
+                // É o último stop, marca para finalizar
+                $data['auto_finish_pending'] = true;
+                $data['auto_finish_at'] = now()->addSeconds(15);
+            }
+
             $shouldUpdate = true;
         }
 
         // ===============================
-        // 🚀 SAÍDA DO PONTO (CHAVE 🔥)
+        // ⚠️ GARANTIA: Se por algum motivo não avançou mas já estava arrived
+        // (caso de fallback para evitar travamento)
         // ===============================
-        if (
-            $trip->arrived_at_stop &&
-            $lastDistance &&
-            $distance > $lastDistance
-        ) {
-            $data['current_stop_order'] = $trip->current_stop_order + 1;
-            $data['arrived_at_stop'] = false;
-            $data['approaching_stop'] = false;
+        if (!$advancedToNextStop && $trip->arrived_at_stop && !$trip->auto_finish_pending) {
+            // Verifica se já deveria ter avançado
+            $nextStopOrder = $trip->current_stop_order + 1;
+            $nextStopExists = $stops->contains('stop_order', $nextStopOrder);
 
-            $shouldUpdate = true;
+            if ($nextStopExists) {
+                $data['current_stop_order'] = $nextStopOrder;
+                $data['arrived_at_stop'] = false;
+                $data['approaching_stop'] = false;
+                $shouldUpdate = true;
+
+                \Log::warning('Stop avançado por fallback', [
+                    'trip_id' => $trip->id,
+                    'from_stop' => $trip->current_stop_order,
+                    'to_stop' => $nextStopOrder
+                ]);
+            }
         }
 
         // ===============================
-        // 🏁 ÚLTIMA PARADA
+        // 🏁 ÚLTIMA PARADA - Enviar aviso de finalização
         // ===============================
         $isLastStop = $currentStop->stop_order === $stops->last()->stop_order;
 
-        if ($isLastStop) {
-
-            if (!$trip->auto_finish_pending) {
-                $data['auto_finish_pending'] = true;
-                $data['auto_finish_at'] = now()->addSeconds(15);
-                $shouldUpdate = true;
-            }
-
-            if (!$trip->end_warning_sent) {
-                $data['end_warning_sent'] = true;
-                $approachingEnd = true;
-                $shouldUpdate = true;
-            }
+        if ($isLastStop && !$trip->end_warning_sent && !$advancedToNextStop) {
+            $data['end_warning_sent'] = true;
+            $approachingEnd = true;
+            $shouldUpdate = true;
         }
 
         // ===============================
-        // 🔔 ALERTAS DE ALUNOS
+        // 🔔 ALERTAS DE ALUNOS (só dispara quando chega no ponto)
         // ===============================
-        if ($currentStop->allow_student_alert) {
+        if (
+            $currentStop->allow_student_alert &&
+            $isWithinArrivalRadius &&
+            !$trip->arrived_at_stop
+        ) {
 
             $alerts = StudentAlertPoint::where('route_stop_id', $currentStop->id)
                 ->where('enabled', true)
                 ->get();
 
             foreach ($alerts as $alert) {
-
                 $alreadySent = TripStopAlert::where('trip_id', $trip->id)
                     ->where('student_id', $alert->student_id)
                     ->exists();
 
-                if ($alreadySent) continue;
+                if (!$alreadySent) {
+                    FirebasePushService::sendToUser(
+                        $alert->student_id,
+                        "🚌 Seu ônibus está chegando",
+                        "Parada: {$currentStop->name}"
+                    );
 
-                FirebasePushService::sendToUser(
-                    $alert->student_id,
-                    "🚌 Seu ônibus está chegando",
-                    "Parada: {$currentStop->name}"
-                );
-
-                TripStopAlert::create([
-                    'trip_id' => $trip->id,
-                    'student_id' => $alert->student_id,
-                    'route_stop_id' => $currentStop->id,
-                    'sent_at' => now()
-                ]);
+                    TripStopAlert::create([
+                        'trip_id' => $trip->id,
+                        'student_id' => $alert->student_id,
+                        'route_stop_id' => $currentStop->id,
+                        'sent_at' => now()
+                    ]);
+                }
             }
         }
 
@@ -213,9 +237,7 @@ class TripLocationController extends Controller
             $trip->update($data);
         }
 
-        // ===============================
-        // 🧹 LIMPEZA AUTOMÁTICA
-        // ===============================
+        // 🧹 LIMPEZA AUTOMÁTICA (mantido)
         if (rand(1, 100) === 1) {
             DB::table('trip_locations')
                 ->where('recorded_at', '<', Carbon::now()->subDays(5))
@@ -231,7 +253,8 @@ class TripLocationController extends Controller
                 'lng' => $location->longitude,
                 'distance' => $distance,
                 'current_stop' => $trip->current_stop_order,
-                'arrived' => $trip->arrived_at_stop
+                'arrived' => $trip->arrived_at_stop,
+                'advanced' => $advancedToNextStop
             ]
         ]);
     }
