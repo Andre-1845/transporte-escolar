@@ -51,9 +51,21 @@ class TripLocationController extends Controller
             ->get()
             ->values();
 
+        $lastStopOrder = $stops->max('stop_order');
+
+        if ($trip->current_stop_order > $lastStopOrder) {
+
+            $trip->update([
+                'status' => 'finished'
+            ]);
+
+            return response()->json(['success' => true]);
+        }
+
         $shouldUpdate = false;
         $data = [];
         $approachingEnd = false;
+
 
         // 🔥 PARADA ESPERADA
         $currentStop = $stops->firstWhere(
@@ -103,7 +115,9 @@ class TripLocationController extends Controller
             // ===============================
             // SAIU DA PARADA → AVANÇA
             // ===============================
-            if ($trip->arrived_at_stop && $distance > ($currentStop->radius_meters + 50)) {
+            $alreadyArrived = $trip->arrived_at_stop || ($data['arrived_at_stop'] ?? false);
+
+            if ($alreadyArrived && $distance > ($currentStop->radius_meters)) {
 
                 $data['current_stop_order'] = $trip->current_stop_order + 1;
                 $data['arrived_at_stop'] = false;
