@@ -13,6 +13,7 @@ use App\Helpers\GeoHelper;
 use App\Services\FirebasePushService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TripLocationController extends Controller
 {
@@ -244,6 +245,21 @@ class TripLocationController extends Controller
                 ->limit(1000)
                 ->delete();
         }
+
+        // No método store() do TripLocationController, adicione:
+        Log::info('Verificação de chegada', [
+            'trip_id' => $trip->id,
+            'current_stop_order' => $trip->current_stop_order,
+            'stop_name' => $currentStop->name,
+            'stop_lat' => $currentStop->latitude,
+            'stop_lng' => $currentStop->longitude,
+            'bus_lat' => $lat,
+            'bus_lng' => $lng,
+            'distance' => $distance,
+            'radius' => $currentStop->radius_meters ?? 200,
+            'arrived_at_stop' => $trip->arrived_at_stop,
+            'is_within_radius' => $distance <= ($currentStop->radius_meters ?? 200)
+        ]);
 
         return response()->json([
             'success' => true,
