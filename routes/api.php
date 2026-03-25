@@ -16,6 +16,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/me', function () {
             return auth()->user();
         });
+        Route::post('/register-student', [AuthController::class, 'registerStudent']);
+        Route::get('/school/validate/{code}', [AuthController::class, 'validateSchoolCode']);
         Route::get('/buses', [BusController::class, 'index']);
         Route::get('/routes', [SchoolRouteController::class, 'index']);
         Route::get('/routes/{id}', [SchoolRouteController::class, 'show']);
