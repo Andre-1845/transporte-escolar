@@ -328,4 +328,26 @@ class TripController extends Controller
 
         return null;
     }
+
+    public function cancelAutoFinish($id)
+    {
+        $trip = Trip::findOrFail($id);
+
+        if ($trip->status === 'finished') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trip já finalizada'
+            ], 400);
+        }
+
+        $trip->update([
+            'auto_finish_pending' => false,
+            'auto_finish_at' => null
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Auto finish cancelado'
+        ]);
+    }
 }
