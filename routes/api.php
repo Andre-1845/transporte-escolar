@@ -28,6 +28,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/trips/{id}', [TripController::class, 'update']);
         Route::post('/trips/{id}/location', [TripLocationController::class, 'store']);
         Route::get('/trips/{id}/latest-location', [TripLocationController::class, 'latest']);
+        Route::post('/trips/{id}/cancel-auto-finish', [TripController::class, 'cancelAutoFinish']);
         Route::get('/driver/today-trip', [TripController::class, 'todayForDriver']);
         Route::post('/trips/{id}/start', [TripController::class, 'start']);
         Route::post('/trips/{id}/finish', [TripController::class, 'finish']);
