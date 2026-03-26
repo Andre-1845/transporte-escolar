@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\RouteAdminController;
 use App\Http\Controllers\Admin\RouteEditorController;
 use App\Http\Controllers\Admin\RouteMapController;
 use App\Http\Controllers\Admin\RouteStopAdminController;
+use App\Http\Controllers\Admin\TripAlertLogController; // 🔥 ADICIONADO
 use App\Http\Controllers\Auth\LoginController;
 
 Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
@@ -23,12 +24,25 @@ Route::prefix('admin')
         Route::get('/', [DashboardController::class, 'index'])
             ->name('admin.dashboard');
 
+        /*
+        |--------------------------------------------------------------------------
+        | TRIP ALERTS LOGS
+        |--------------------------------------------------------------------------
+        */
+
+        Route::prefix('trip-alerts-logs')->name('admin.trip-alerts-logs.')->group(function () {
+            Route::get('/', [TripAlertLogController::class, 'index'])->name('index');
+            Route::get('/stats', [TripAlertLogController::class, 'stats'])->name('stats');
+            Route::get('/export', [TripAlertLogController::class, 'export'])->name('export'); // 🔥 CORRIGIDO
+            Route::post('/retry-failed', [TripAlertLogController::class, 'retryFailed'])->name('retry-failed');
+            Route::get('/{id}', [TripAlertLogController::class, 'show'])->name('show');
+        });
 
         /*
-|--------------------------------------------------------------------------
-| ROUTE MAP EDITOR
-|--------------------------------------------------------------------------
-*/
+        |--------------------------------------------------------------------------
+        | ROUTE MAP EDITOR
+        |--------------------------------------------------------------------------
+        */
 
         Route::get(
             '/routes/{id}/map',

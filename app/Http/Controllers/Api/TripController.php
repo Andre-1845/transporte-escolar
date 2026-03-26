@@ -35,7 +35,7 @@ class TripController extends Controller
     public function active()
     {
         $trips = Trip::with(['bus', 'route', 'route.points', 'route.stops'])
-            ->where('school_id', auth()->user()->school_id)
+            ->where('school_id', Auth::user()->school_id)
             ->where('status', 'in_progress')
             ->get();
 
@@ -49,13 +49,11 @@ class TripController extends Controller
     {
         return DB::transaction(function () use ($request, $id) {
 
-            // 🔒 LOCK NA TRIP
             $trip = Trip::where('id', $id)
                 ->lockForUpdate()
                 ->with('route.stops')
                 ->firstOrFail();
 
-            // 🚫 Status inválido
             if (!in_array($trip->status, ['scheduled', 'finished'])) {
                 return response()->json([
                     'success' => false,
@@ -63,7 +61,7 @@ class TripController extends Controller
                 ], 400);
             }
 
-            // 🚫 DRIVER já em viagem
+            // Verifica se motorista já está em viagem
             $driverBusy = Trip::where('driver_id', $trip->driver_id)
                 ->where('status', 'in_progress')
                 ->lockForUpdate()
@@ -76,7 +74,7 @@ class TripController extends Controller
                 ], 400);
             }
 
-            // 🚫 BUS já em uso
+            // Verifica se ônibus já está em uso
             $busBusy = Trip::where('bus_id', $trip->bus_id)
                 ->where('status', 'in_progress')
                 ->lockForUpdate()
@@ -89,13 +87,12 @@ class TripController extends Controller
                 ], 400);
             }
 
-            // 📍 Validação de distância
+            // Validação de distância
             $firstStop = $trip->route->stops
                 ->sortBy('stop_order')
                 ->first();
 
             if ($firstStop && !$request->force_start) {
-
                 $distance = GeoHelper::distanceMeters(
                     $request->latitude,
                     $request->longitude,
@@ -108,13 +105,17 @@ class TripController extends Controller
                         'success' => false,
                         'confirm_required' => true,
                         'message' => 'Você está distante do ponto inicial. Confirmar início da viagem?'
-                    ], 200); // 🔥 IMPORTANTE: não é erro
+                    ], 200);
                 }
             }
 
+            // 🔥 NOVO: Inicializa os stop points da viagem
+            $trip->initializeStops();
+
             // ✅ INICIA VIAGEM
             $trip->update([
-                'status' => 'in_progress'
+                'status' => 'in_progress',
+                'start_time' => now()->format('H:i:s')
             ]);
 
             return response()->json([
@@ -124,11 +125,12 @@ class TripController extends Controller
         });
     }
 
+
     public function finish($id)
     {
         $trip = Trip::findOrFail($id);
 
-        $user = auth()->user();
+        $user = Auth::user();
 
         if ($trip->driver_id !== $user->id) {
             return response()->json([
@@ -273,7 +275,7 @@ class TripController extends Controller
 
     public function todayTripsForDriver()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         if (!$user->hasRole('driver')) {
             return response()->json([

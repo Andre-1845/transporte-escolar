@@ -5,22 +5,45 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Models\TripLocation;
-use App\Models\RouteStop;
-use App\Models\StudentAlertPoint;
-use App\Models\TripStopAlert;
-use Illuminate\Http\Request;
+use App\Services\StopPointManager;
 use App\Helpers\GeoHelper;
-use App\Services\FirebasePushService;
-use Illuminate\Support\Carbon;
+use App\Services\AlertService;
+use App\Services\MovementAnalyzer;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TripLocationController extends Controller
 {
+    /**
+     * CONTROLLER: TripLocationController
+     *
+     * FUNÇÃO: Recebe e processa localizações do motorista
+     *
+     * ALTERAÇÕES:
+     * - Simplificado, delegando lógica para StopPointManager
+     * - Endpoint de latest-location otimizado com ETA
+     */
+    // ----------------------------------------------------  //
+
+    private $stopPointManager;
+    private $movementAnalyzer;
+
+    public function __construct(StopPointManager $stopPointManager, MovementAnalyzer $movementAnalyzer)
+    {
+        $this->stopPointManager = $stopPointManager;
+        $this->movementAnalyzer = $movementAnalyzer;
+    }
+
+    /**
+     * Recebe localização do motorista (AGORA COM DIREÇÃO)
+     */
     public function store(Request $request, $tripId)
     {
         $request->validate([
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'bearing' => 'nullable|numeric|between:0,360', // Pode vir do GPS
+            'speed' => 'nullable|numeric|min:0' // Pode vir do GPS
         ]);
 
         $trip = Trip::findOrFail($tripId);
@@ -35,236 +58,73 @@ class TripLocationController extends Controller
         $lat = $request->latitude;
         $lng = $request->longitude;
 
-        // 📍 SALVAR LOCALIZAÇÃO
-        $location = TripLocation::create([
+        // Busca última localização para calcular direção
+        $previousLocation = TripLocation::where('trip_id', $trip->id)
+            ->orderBy('recorded_at', 'desc')
+            ->first();
+
+        // Prepara dados da localização
+        $locationData = [
             'school_id' => $trip->school_id,
             'trip_id' => $trip->id,
             'latitude' => $lat,
             'longitude' => $lng,
             'recorded_at' => now(),
-        ]);
+        ];
 
-        $stops = RouteStop::where('school_route_id', $trip->school_route_id)
-            ->orderBy('stop_order')
-            ->get()
-            ->values();
-
-        if ($stops->isEmpty()) {
-            return response()->json(['success' => true]);
+        // Se o app enviou bearing/speed do GPS, usa eles
+        if ($request->has('bearing')) {
+            $locationData['bearing'] = $request->bearing;
+            $locationData['heading'] = $this->movementAnalyzer->bearingToHeading($request->bearing);
         }
 
-        $lastStopOrder = $stops->max('stop_order');
-
-        // 🏁 FINAL DE ROTA
-        if ($trip->current_stop_order > $lastStopOrder) {
-            $trip->update([
-                'status' => 'finished'
-            ]);
-            return response()->json(['success' => true]);
+        if ($request->has('speed')) {
+            $locationData['speed'] = $request->speed;
         }
 
-        $currentStop = $stops->firstWhere('stop_order', $trip->current_stop_order);
-
-        if (!$currentStop) {
-            return response()->json(['success' => true]);
+        // Se não veio do GPS, calcula baseado no ponto anterior
+        $location = new TripLocation($locationData);
+        if (!$request->has('bearing') && $previousLocation) {
+            $location->calculateMovementFromPrevious($previousLocation);
         }
 
-        // 📏 DISTÂNCIA
-        $distance = GeoHelper::distanceMeters(
-            $lat,
-            $lng,
-            $currentStop->latitude,
-            $currentStop->longitude
-        );
+        $location->save();
 
-        $lastDistance = $trip->last_distance;
+        // Processa lógica com direção
+        $result = $this->stopPointManager->processLocation($trip, $lat, $lng, $previousLocation);
 
-        $data = [];
-        $shouldUpdate = false;
-        $approachingEnd = false;
-
-        // Flag para controlar se já avançamos neste request
-        $advancedToNextStop = false;
-
-        // ===============================
-        // 🚀 APROXIMAÇÃO (quando está se aproximando)
-        // ===============================
-        if ($lastDistance && $distance < $lastDistance) {
-            $data['approaching_stop'] = true;
-            $shouldUpdate = true;
-        }
-
-        // ===============================
-        // 🚀 CHEGADA NO PONTO
-        // ===============================
-        // Chegou se:
-        // 1. Ainda não marcou como arrived
-        // 2. Distância menor que o raio do ponto OU menor que 40 metros
-        $arrivalRadius = $currentStop->radius_meters ?? 200;
-        $isWithinArrivalRadius = $distance <= $arrivalRadius;
-
-        if (!$trip->arrived_at_stop && $isWithinArrivalRadius) {
-
-            $now = now();
-
-            // 🔥 MÉTRICAS ENTRE PARADAS
-            if (
-                $trip->last_stop_at &&
-                $trip->last_stop_id &&
-                $trip->last_stop_id != $currentStop->id
-            ) {
-
-                $timeSpent = $now->diffInSeconds($trip->last_stop_at);
-
-                $this->updateStopMetrics(
-                    $trip,
-                    $trip->last_stop_id,
-                    $currentStop->id,
-                    $timeSpent
-                );
-            }
-
-            $data['arrived_at_stop'] = true;
-            $data['last_stop_at'] = $now;
-            $data['last_stop_id'] = $currentStop->id;
-
-            // 🔥 NOVA LÓGICA: Avança para o próximo stop IMEDIATAMENTE
-            $nextStopOrder = $trip->current_stop_order + 1;
-
-            // Verifica se existe próximo stop
-            $nextStopExists = $stops->contains('stop_order', $nextStopOrder);
-
-            if ($nextStopExists) {
-                // Avança para o próximo stop
-                $data['current_stop_order'] = $nextStopOrder;
-                $data['arrived_at_stop'] = false;  // Reseta para o próximo stop
-                $data['approaching_stop'] = false; // Reseta flag de aproximação
-
-                $advancedToNextStop = true;
-
-                // Log para debug
-                \Log::info('Stop avançado', [
-                    'trip_id' => $trip->id,
-                    'from_stop' => $trip->current_stop_order,
-                    'to_stop' => $nextStopOrder,
-                    'distance' => $distance,
-                    'radius' => $arrivalRadius
-                ]);
-            } else {
-                // É o último stop, marca para finalizar
-                $data['auto_finish_pending'] = true;
-                $data['auto_finish_at'] = now()->addSeconds(15);
-            }
-
-            $shouldUpdate = true;
-        }
-
-        // ===============================
-        // ⚠️ GARANTIA: Se por algum motivo não avançou mas já estava arrived
-        // (caso de fallback para evitar travamento)
-        // ===============================
-        if (!$advancedToNextStop && $trip->arrived_at_stop && !$trip->auto_finish_pending) {
-            // Verifica se já deveria ter avançado
-            $nextStopOrder = $trip->current_stop_order + 1;
-            $nextStopExists = $stops->contains('stop_order', $nextStopOrder);
-
-            if ($nextStopExists) {
-                $data['current_stop_order'] = $nextStopOrder;
-                $data['arrived_at_stop'] = false;
-                $data['approaching_stop'] = false;
-                $shouldUpdate = true;
-
-                \Log::warning('Stop avançado por fallback', [
-                    'trip_id' => $trip->id,
-                    'from_stop' => $trip->current_stop_order,
-                    'to_stop' => $nextStopOrder
-                ]);
-            }
-        }
-
-        // ===============================
-        // 🏁 ÚLTIMA PARADA - Enviar aviso de finalização
-        // ===============================
-        $isLastStop = $currentStop->stop_order === $stops->last()->stop_order;
-
-        if ($isLastStop && !$trip->end_warning_sent && !$advancedToNextStop) {
-            $data['end_warning_sent'] = true;
-            $approachingEnd = true;
-            $shouldUpdate = true;
-        }
-
-        // ===============================
-        // 🔔 ALERTAS DE ALUNOS (só dispara quando chega no ponto)
-        // ===============================
-        if (
-            $currentStop->allow_student_alert &&
-            $isWithinArrivalRadius &&
-            !$trip->arrived_at_stop
-        ) {
-
-            $alerts = StudentAlertPoint::where('route_stop_id', $currentStop->id)
-                ->where('enabled', true)
-                ->get();
-
-            foreach ($alerts as $alert) {
-                $alreadySent = TripStopAlert::where('trip_id', $trip->id)
-                    ->where('student_id', $alert->student_id)
-                    ->exists();
-
-                if (!$alreadySent) {
-                    FirebasePushService::sendToUser(
-                        $alert->student_id,
-                        "🚌 Seu ônibus está chegando",
-                        "Parada: {$currentStop->name}"
-                    );
-
-                    TripStopAlert::create([
-                        'trip_id' => $trip->id,
-                        'student_id' => $alert->student_id,
-                        'route_stop_id' => $currentStop->id,
-                        'sent_at' => now()
-                    ]);
-                }
-            }
-        }
-
-        // ===============================
-        // 💾 SALVAR DISTÂNCIA
-        // ===============================
-        $data['last_distance'] = $distance;
-
-        if ($shouldUpdate) {
-            $trip->update($data);
-        }
-
-        // 🧹 LIMPEZA AUTOMÁTICA (mantido)
-        if (rand(1, 100) === 1) {
-            DB::table('trip_locations')
-                ->where('recorded_at', '<', Carbon::now()->subDays(5))
-                ->limit(1000)
-                ->delete();
+        // Atualiza status de movimento na localização
+        if (isset($result['movement_status'])) {
+            $location->movement_status = $result['movement_status'];
+            $location->save();
         }
 
         return response()->json([
             'success' => true,
-            'approaching_end' => $approachingEnd,
+            'approaching_end' => $this->checkEndWarning($trip) ? 1 : 0,
             'data' => [
-                'lat' => $location->latitude,
-                'lng' => $location->longitude,
-                'distance' => $distance,
-                'current_stop' => $trip->current_stop_order,
-                'arrived' => $trip->arrived_at_stop,
-                'advanced' => $advancedToNextStop
+                'lat' => $lat,
+                'lng' => $lng,
+                'distance' => $result['distance'],
+                'current_stop' => $result['current_stop'],
+                'arrived' => $this->getArrivedStatus($trip) ? 1 : 0,
+                'advanced' => $result['advanced'] ? 1 : 0,
+                'eta_seconds' => $result['eta_seconds'],
+                'bearing' => $result['bearing'],
+                'speed' => $result['speed'],
+                'movement_status' => $result['movement_status'],
+                'predicted_next_stop' => $result['predicted_next_stop'] ?? null
             ]
         ]);
     }
 
-    // ===============================
-    // 📍 ÚLTIMA LOCALIZAÇÃO + ETA
-    // ===============================
+    /**
+     * Última localização (AGORA COM INFORMAÇÕES DE DIREÇÃO)
+     */
     public function latest($tripId)
     {
-        $trip = Trip::with(['latestLocation'])->findOrFail($tripId);
+        $trip = Trip::with(['latestLocation', 'stopTracking.stop'])
+            ->findOrFail($tripId);
 
         if ($trip->auto_finish_pending && $trip->auto_finish_at <= now()) {
             $trip->update([
@@ -281,47 +141,60 @@ class TripLocationController extends Controller
             ]);
         }
 
-        $lat = $trip->latestLocation->latitude;
-        $lng = $trip->latestLocation->longitude;
+        $location = $trip->latestLocation;
+        $lat = $location->latitude;
+        $lng = $location->longitude;
 
-        $stops = RouteStop::where('school_route_id', $trip->school_route_id)
-            ->orderBy('stop_order')
-            ->get()
-            ->values();
-
-        $nextStop = $stops->firstWhere(
-            'stop_order',
-            $trip->current_stop_order
-        );
-
+        $currentTracking = $trip->getCurrentStop();
         $distance = null;
+        $nextStop = null;
+        $eta = null;
 
-        if ($nextStop) {
+        if ($currentTracking) {
+            $currentStop = $currentTracking->stop;
             $distance = GeoHelper::distanceMeters(
                 $lat,
                 $lng,
-                $nextStop->latitude,
-                $nextStop->longitude
+                $currentStop->latitude,
+                $currentStop->longitude
             );
-        }
 
-        $eta = $nextStop
-            ? $this->calculateETA($trip, $stops, $nextStop)
-            : null;
+            $eta = $currentTracking->calculateETAFromCurrentPosition(
+                $lat,
+                $lng,
+                $distance,
+                $location->speed
+            );
+
+            $nextStop = [
+                'id' => $currentStop->id,
+                'name' => $currentStop->name,
+                'order' => $currentStop->stop_order,
+                'status' => $currentTracking->status,
+                'distance' => $distance,
+                'radius_meters' => $currentStop->radius_meters ?? 200,
+                'bearing_to_stop' => $this->movementAnalyzer->calculateBearing(
+                    $lat,
+                    $lng,
+                    $currentStop->latitude,
+                    $currentStop->longitude
+                )
+            ];
+        }
 
         return response()->json([
             'success' => true,
             'data' => [
                 'lat' => $lat,
                 'lng' => $lng,
+                'bearing' => $location->bearing,
+                'speed' => $location->speed,
+                'heading' => $location->heading,
+                'movement_status' => $location->movement_status,
                 'distance' => $distance,
-                'next_stop' => $nextStop ? [
-                    'id' => $nextStop->id,
-                    'name' => $nextStop->name,
-                    'order' => $nextStop->stop_order,
-                ] : null,
+                'next_stop' => $nextStop,
                 'eta_seconds' => $eta,
-                'auto_finish_pending' => $trip->auto_finish_pending,
+                'auto_finish_pending' => $trip->auto_finish_pending ? 1 : 0,
                 'auto_finish_seconds' => $trip->auto_finish_at
                     ? max(0, now()->diffInSeconds($trip->auto_finish_at, false))
                     : null,
@@ -329,82 +202,57 @@ class TripLocationController extends Controller
         ]);
     }
 
-    // ===============================
-    // 📊 MÉTRICAS DE TEMPO
-    // ===============================
-    private function updateStopMetrics($trip, $fromStopId, $toStopId, $timeSpent)
+
+// -------------------------------------------------  //
+
+
+    /**
+     * Verifica se deve enviar aviso de fim de rota
+     */
+    private function checkEndWarning(Trip $trip): bool
     {
-        if ($timeSpent < 10 || $timeSpent > 1800) return;
+        if ($trip->end_warning_sent) {
+            return false;
+        }
 
-        $period = $this->getPeriod();
+        $currentTracking = $trip->getCurrentStop();
+        if (!$currentTracking) {
+            return false;
+        }
 
-        $metric = DB::table('stop_time_metrics')
-            ->where('route_id', $trip->school_route_id)
-            ->where('from_stop_id', $fromStopId)
-            ->where('to_stop_id', $toStopId)
-            ->where('period', $period)
+        // Verifica se é o último stop
+        $lastStop = $trip->stopTracking()
+            ->orderBy('stop_order', 'desc')
             ->first();
 
-        if ($metric) {
-            $newAvg = ($metric->avg_time_seconds * 0.7) + ($timeSpent * 0.3);
+        if ($lastStop && $lastStop->id === $currentTracking->stop_id) {
+            // Marca como enviado
+            $trip->update(['end_warning_sent' => true]);
 
-            DB::table('stop_time_metrics')
-                ->where('id', $metric->id)
-                ->update([
-                    'avg_time_seconds' => (int) $newAvg,
-                    'updated_at' => now()
-                ]);
-        } else {
-            DB::table('stop_time_metrics')->insert([
-                'route_id' => $trip->school_route_id,
-                'from_stop_id' => $fromStopId,
-                'to_stop_id' => $toStopId,
-                'avg_time_seconds' => $timeSpent,
-                'period' => $period,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-        }
-    }
+            // Dispara alerta
+            $eta = $currentTracking->calculateETAFromCurrentPosition(
+                $trip->latestLocation->latitude,
+                $trip->latestLocation->longitude
+            );
 
-    private function getPeriod()
-    {
-        $hour = now()->hour;
+            app(AlertService::class)->sendEndWarning($trip, $eta);
 
-        if ($hour >= 6 && $hour < 12) return 'morning';
-        if ($hour >= 12 && $hour < 18) return 'afternoon';
-        if ($hour >= 18 && $hour < 24) return 'evening';
-
-        return 'night';
-    }
-
-    // ===============================
-    // ⏱️ ETA REAL
-    // ===============================
-    private function calculateETA($trip, $stops, $currentStop)
-    {
-        $currentIndex = $stops->search(fn($s) => $s->id === $currentStop->id);
-
-        if ($currentIndex === false) return null;
-
-        $eta = 0;
-        $period = $this->getPeriod();
-
-        for ($i = $currentIndex; $i < count($stops) - 1; $i++) {
-
-            $from = $stops[$i];
-            $to = $stops[$i + 1];
-
-            $metric = DB::table('stop_time_metrics')
-                ->where('route_id', $trip->school_route_id)
-                ->where('from_stop_id', $from->id)
-                ->where('to_stop_id', $to->id)
-                ->where('period', $period)
-                ->first();
-
-            $eta += $metric ? $metric->avg_time_seconds : 120;
+            return true;
         }
 
-        return $eta;
+        return false;
+    }
+
+    /**
+     * Obtém status de arrived para compatibilidade
+     */
+    private function getArrivedStatus(Trip $trip): bool
+    {
+        $currentTracking = $trip->getCurrentStop();
+        if (!$currentTracking) {
+            return false;
+        }
+
+        return $currentTracking->status === 'reached';
     }
 }
