@@ -2,21 +2,15 @@
 
 namespace App\Models;
 
+use App\Helpers\GeoHelper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Traits\BelongsToSchool;
+use App\Services\MovementAnalyzer;
 
 class TripLocation extends Model
 {
     use HasFactory, BelongsToSchool;
-
-    /**
-     * MODEL: TripLocation
-     *
-     * ALTERAÇÕES:
-     * - Adicionados campos de direção e movimento
-     * - Adicionado método para calcular direção entre pontos
-     */
 
     protected $fillable = [
         'school_id',
@@ -24,10 +18,10 @@ class TripLocation extends Model
         'latitude',
         'longitude',
         'recorded_at',
-        'bearing',      // NOVO: direção em graus
-        'speed',        // NOVO: velocidade km/h
-        'heading',      // NOVO: direção cardinal
-        'movement_status' // NOVO: status de movimento
+        'bearing',
+        'speed',
+        'heading',
+        'movement_status'
     ];
 
     protected $casts = [
@@ -44,6 +38,24 @@ class TripLocation extends Model
     }
 
     /**
+     * 🔥 NOVO MÉTODO: Calcula distância até um stop point específico
+     */
+    public function getDistanceToStop($stopId)
+    {
+        $stop = RouteStop::find($stopId);
+        if (!$stop) {
+            return null;
+        }
+
+        return GeoHelper::distanceMeters(
+            $this->latitude,
+            $this->longitude,
+            $stop->latitude,
+            $stop->longitude
+        );
+    }
+
+    /**
      * Calcula a direção e velocidade baseado no ponto anterior
      */
     public function calculateMovementFromPrevious(?TripLocation $previous): void
@@ -52,7 +64,7 @@ class TripLocation extends Model
             return;
         }
 
-        $analyzer = app(\App\Services\MovementAnalyzer::class);
+        $analyzer = app(MovementAnalyzer::class);
 
         $movement = $analyzer->analyzeMovement(
             $previous->latitude,

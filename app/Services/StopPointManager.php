@@ -18,12 +18,6 @@ class StopPointManager
      * SERVICE: StopPointManager
      *
      * FUNÇÃO: Gerencia toda a lógica de processamento dos stop points
-     *
-     * ALTERAÇÕES:
-     * - Integração completa com TripStopTracking
-     * - Sistema de estados: pending → approaching → reached → passed
-     * - Atualização automática de métricas de tempo
-     * - Cálculo de ETA baseado em médias históricas
      */
 
     private $alertService;
@@ -31,19 +25,6 @@ class StopPointManager
 
     // Raio de aproximação é 1.5x o raio do stop point
     const APPROACH_RATIO = 1.5;
-
-    /**
-     * Processa a localização atual e atualiza o status dos stop points
-     *
-     * @return array [
-     *   'current_stop' => int|null,
-     *   'distance' => float|null,
-     *   'alert_triggered' => bool,
-     *   'advanced' => bool,
-     *   'eta_seconds' => int|null
-     * ]
-     */
-
     const BEARING_TOLERANCE = 45; // graus de tolerância para considerar "na direção"
 
     public function __construct(AlertService $alertService, MovementAnalyzer $movementAnalyzer)
@@ -96,6 +77,7 @@ class StopPointManager
             $speed = 0;
             $movementStatus = 'moving';
             $isApproachingByDirection = false;
+            $lastDistance = $distance; // fallback para distância atual
 
             if ($previousLocation) {
                 $movement = $this->movementAnalyzer->analyzeMovement(
@@ -123,11 +105,14 @@ class StopPointManager
                 $angleDiff = min($angleDiff, 360 - $angleDiff);
                 $isApproachingByDirection = $angleDiff <= self::BEARING_TOLERANCE;
 
-                // Determina status de movimento
+                // 🔥 CORREÇÃO: Calcula distância anterior com fallback
+                $lastDistance = $previousLocation->getDistanceToStop($currentStop->id) ?? $distance;
+
+                // 🔥 CORREÇÃO: Remove parâmetro duplicado
                 $movementStatus = $this->movementAnalyzer->getMovementStatus(
                     $speed,
                     $distance,
-                    $previousLocation->getDistanceToStop($currentStop->id) ?? $distance,
+                    $lastDistance,
                     $bearing,
                     $angleToStop
                 );
