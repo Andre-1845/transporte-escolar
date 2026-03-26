@@ -25,3 +25,5 @@ yarn-error.log
 /bootstrap/cache/*.php
 .DS_Store
 Thumbs.db
+/temp_backup
+
