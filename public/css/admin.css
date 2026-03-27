@@ -1,0 +1,302 @@
+/* ============================================
+   ADMIN PANEL - DESIGN SYSTEM V2
+   ============================================ */
+
+/* RESET */
+html {
+    box-sizing: border-box;
+}
+*, *::before, *::after {
+    box-sizing: inherit;
+}
+
+/* ============================================
+   BASE
+   ============================================ */
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #eef2f7;
+    color: #2d3748;
+    line-height: 1.5;
+}
+
+/* ============================================
+   CONTAINER
+   ============================================ */
+.admin-container {
+    max-width: 1400px;
+    margin: auto;
+    padding: 2rem;
+}
+
+.section {
+    margin-bottom: 24px;
+}
+
+/* ============================================
+   GRID SYSTEM (FIXADO COM GAP)
+   ============================================ */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px; /* 🔥 resolve cards colados */
+}
+
+[class*="col-"] {
+    flex: 1;
+}
+
+/* COLUNAS */
+.col-md-3 { flex: 0 0 calc(25% - 16px); }
+.col-md-4 { flex: 0 0 calc(33.333% - 16px); }
+.col-md-6 { flex: 0 0 calc(50% - 16px); }
+.col-12 { flex: 0 0 100%; }
+
+/* RESPONSIVO */
+@media (max-width: 768px) {
+    .col-md-3,
+    .col-md-4,
+    .col-md-6 {
+        flex: 0 0 100%;
+    }
+}
+
+/* ============================================
+   UTILITÁRIOS
+   ============================================ */
+.d-flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+
+/* ============================================
+   NAVBAR
+   ============================================ */
+.admin-navbar {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    max-width: 1400px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    padding: 0 2rem;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-weight: bold;
+}
+
+.nav-links {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-links a {
+    color: #fff;
+    padding: 10px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.nav-links a:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.logout-form {
+    display: flex;
+}
+
+.logout-btn {
+    background: #dc3545;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* ============================================
+   CARDS / INFO BOX
+   ============================================ */
+.info-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transition: 0.2s;
+}
+
+.info-box:hover {
+    transform: translateY(-2px);
+}
+
+.info-box-icon {
+    font-size: 1.6rem;
+}
+
+.info-box-text {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fefefe;
+}
+
+.info-box-number {
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+/* GRADIENTES */
+.gradient-primary { background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+.gradient-success { background: linear-gradient(135deg,#11998e,#38ef7d); color:#fff; }
+.gradient-danger { background: linear-gradient(135deg,#eb3349,#f45c43); color:#fff; }
+.gradient-warning { background: linear-gradient(135deg,#f093fb,#f5576c); color:#fff; }
+
+/* ============================================
+   SECTION HEADER
+   ============================================ */
+.section-header {
+    margin-bottom: 1rem;
+}
+
+.section-header h2,
+.section-header h3 {
+    margin: 0;
+}
+
+/* ============================================
+   TABLE
+   ============================================ */
+.table-container {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table th {
+    background: #f1f5f9;
+    text-align: left;
+    padding: 12px;
+    font-size: 0.85rem;
+}
+
+.table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.table tr:hover {
+    background: #f9fafb;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary { background: #007bff; color: #fff; }
+.btn-success { background: #28a745; color: #fff; }
+.btn-danger { background: #dc3545; color: #fff; }
+.btn-warning { background: #ffc107; color: #000; }
+.btn-info { background: #17a2b8; color: #fff; }
+.btn-secondary { background: #6c757d; color: #fff; }
+
+/* ============================================
+   BADGES
+   ============================================ */
+.badge {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.badge-success { background: #1d9b3a; color: #fff; }
+.badge-danger { background: #dc3545; color: #fff; }
+.badge-warning { background: #d09d02; color: #000; }
+.badge-info { background: #17a2b8; color: #fff; }
+.badge-secondary { background: #6c757d; color: #fff; }
+.badge-primary { background: #032442; color: #fff; }
+
+/* ============================================
+   FORM
+   ============================================ */
+.form-control {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e0;
+    font-size: 0.85rem;
+}
+
+label {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+    display: block;
+    color: #4a5568;
+}
+
+/* ============================================
+   ALERTS
+   ============================================ */
+.alert {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-success { background: #d4edda; }
+.alert-danger { background: #f8d7da; }
+.alert-warning { background: #fff3cd; }
+.alert-info { background: #d1ecf1; }
+
+/* ============================================
+   PROGRESS
+   ============================================ */
+.progress {
+    background: #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: #007bff;
+    color: #fff;
+    font-size: 0.7rem;
+    text-align: center;
+}
