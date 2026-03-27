@@ -1,65 +1,109 @@
 @extends('layouts.admin')
 
+@section('title', 'Rotas')
+
 @section('content')
-    <h1>Rotas</h1>
 
-    <a href="{{ route('admin.routes.create') }}">
-        Nova rota
-    </a>
+    <!-- HEADER -->
+    <div class="section">
+        <div class="d-flex-between">
+            <h2><i class="fas fa-map"></i> Rotas</h2>
 
-    <table border="1" cellpadding="6">
+            <a href="{{ route('admin.routes.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nova Rota
+            </a>
+        </div>
+    </div>
 
-        <tr>
-            <th>ID</th>
-            <th>Nome</th>
-            <th>Ativa</th>
-            <th>Ações</th>
-        </tr>
+    <!-- TABELA -->
+    <div class="section">
+        <div class="info-box" style="flex-direction: column; align-items: stretch;">
 
-        @foreach ($routes as $route)
-            <tr>
+            <div class="section-header">
+                <h3>Lista de Rotas</h3>
+            </div>
 
-                <td>{{ $route->id }}</td>
+            @if ($routes->count() > 0)
 
-                <td>{{ $route->name }}</td>
+                <div class="table-container mt-2">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
 
-                <td>
-                    @if ($route->active)
-                        Ativa
-                    @else
-                        Inativa
-                    @endif
-                </td>
+                        <tbody>
+                            @foreach ($routes as $route)
+                                <tr>
 
-                <td>
+                                    <td>#{{ $route->id }}</td>
 
-                    <a href="{{ route('admin.routes.edit', $route->id) }}">
-                        Editar
-                    </a>
+                                    <td>
+                                        <strong>{{ $route->name }}</strong>
+                                    </td>
 
-                    |
+                                    <td>
+                                        <span class="badge {{ $route->active ? 'badge-success' : 'badge-danger' }}">
+                                            {{ $route->active ? 'Ativa' : 'Inativa' }}
+                                        </span>
+                                    </td>
 
-                    <a href="{{ route('admin.routes.map', $route->id) }}">
-                        🗺 Mapa
-                    </a>
+                                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
 
-                    |<a href="{{ route('admin.routes.stops', $route->id) }}">
-                        Paradas
-                    </a>
+                                        <!-- EDITAR -->
+                                        <a href="{{ route('admin.routes.edit', $route->id) }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
 
-                    <form method="POST" action="{{ route('admin.routes.destroy', $route->id) }}" style="display:inline">
+                                        <!-- MAPA -->
+                                        <a href="{{ route('admin.routes.map', $route->id) }}"
+                                            class="btn btn-secondary btn-sm">
+                                            <i class="fas fa-map-marked-alt"></i>
+                                        </a>
 
-                        @csrf
-                        @method('DELETE')
+                                        <!-- PARADAS -->
+                                        <a href="{{ route('admin.routes.stops', $route->id) }}"
+                                            class="btn btn-primary btn-sm">
+                                            <i class="fas fa-map-pin"></i>
+                                        </a>
 
-                        <button>Excluir</button>
+                                        <!-- EXCLUIR -->
+                                        <form method="POST" action="{{ route('admin.routes.destroy', $route->id) }}">
+                                            @csrf
+                                            @method('DELETE')
 
-                    </form>
+                                            <button type="submit" class="btn btn-danger btn-sm"
+                                                onclick="return confirm('Excluir esta rota?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
 
-                </td>
+                                    </td>
 
-            </tr>
-        @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="alert alert-info mt-2">
+                    <i class="fas fa-info-circle"></i>
+                    Nenhuma rota cadastrada.
 
-    </table>
+                    <div class="mt-2">
+                        <a href="{{ route('admin.routes.create') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Criar primeira rota
+                        </a>
+                    </div>
+                </div>
+
+            @endif
+
+        </div>
+    </div>
+
 @endsection

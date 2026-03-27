@@ -1,90 +1,114 @@
 @extends('layouts.admin')
 
+@section('title', 'Trips')
+
 @section('content')
-    <h2>Trips</h2>
 
-    <a href="/admin/trips/create">Nova Trip</a>
+    <!-- HEADER -->
+    <div class="section">
+        <div class="d-flex-between">
+            <h2><i class="fas fa-bus"></i> Trips</h2>
 
-    <br><br>
+            <a href="{{ route('admin.trips.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nova Trip
+            </a>
+        </div>
+    </div>
 
-    <table border="1" cellpadding="8">
+    <!-- TABELA -->
+    <div class="section">
+        <div class="info-box" style="flex-direction: column; align-items: stretch;">
 
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Rota</th>
-                <th>Motorista</th>
-                <th>Veículo</th>
-                <th>Data</th>
-                <th>Hora</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
+            <div class="section-header">
+                <h3>Lista de Trips</h3>
+            </div>
 
-        <tbody>
+            <div class="table-container mt-2">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Rota</th>
+                            <th>Motorista</th>
+                            <th>Veículo</th>
+                            <th>Data</th>
+                            <th>Hora</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
 
-            @foreach ($trips as $trip)
-                <tr>
+                    <tbody>
+                        @foreach ($trips as $trip)
+                            @php
+                                $map = [
+                                    'scheduled' => ['badge-secondary', 'Agendada'],
+                                    'in_progress' => ['badge-success', 'Em andamento'],
+                                    'finished' => ['badge-info', 'Finalizada'],
+                                    'cancelled' => ['badge-danger', 'Cancelada'],
+                                ];
 
-                    <td>{{ $trip->id }}</td>
+                                [$badge, $label] = $map[$trip->status] ?? ['badge-secondary', $trip->status];
+                            @endphp
 
-                    <td>
-                        {{ $trip->route?->name }}
-                    </td>
+                            <tr>
 
-                    <td>
-                        {{ $trip->driver?->name }}
-                    </td>
+                                <td>#{{ $trip->id }}</td>
 
-                    <td>
-                        {{ $trip->bus?->plate }}
-                    </td>
+                                <td>{{ $trip->route?->name ?? '-' }}</td>
 
-                    <td>
-                        {{ \Carbon\Carbon::parse($trip->trip_date)->format('d/m/Y') }}
-                    </td>
+                                <td>{{ $trip->driver?->name ?? '-' }}</td>
 
-                    <td>
-                        {{ $trip->start_time }}
-                    </td>
+                                <td>{{ $trip->bus?->plate ?? '-' }}</td>
 
-                    <td>
-                        {{ $trip->status }}
-                    </td>
+                                <td>
+                                    {{ \Carbon\Carbon::parse($trip->trip_date)->format('d/m/Y') }}
+                                </td>
 
-                    <td>
+                                <td>{{ $trip->start_time }}</td>
 
-                        <a href="/admin/trips/{{ $trip->id }}/edit">
-                            Editar
-                        </a>
+                                <td>
+                                    <span class="badge {{ $badge }}">
+                                        {{ $label }}
+                                    </span>
+                                </td>
 
-                        @if ($trip->status == 'scheduled')
-                            <form action="{{ url('/admin/trips/' . $trip->id . '/start') }}" method="POST"
-                                style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success">
-                                    Iniciar
-                                </button>
-                            </form>
-                        @endif
+                                <td style="display:flex; gap:6px;">
 
-                        @if ($trip->status == 'in_progress')
-                            <form action="{{ url('/admin/trips/' . $trip->id . '/finish') }}" method="POST"
-                                style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success">
-                                    Finalizar
-                                </button>
-                            </form>
-                        @endif
+                                    <!-- EDITAR -->
+                                    <a href="{{ route('admin.trips.edit', $trip->id) }}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
 
-                    </td>
+                                    <!-- INICIAR -->
+                                    @if ($trip->status == 'scheduled')
+                                        <form action="{{ url('/admin/trips/' . $trip->id . '/start') }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                        </form>
+                                    @endif
 
-                </tr>
-            @endforeach
+                                    <!-- FINALIZAR -->
+                                    @if ($trip->status == 'in_progress')
+                                        <form action="{{ url('/admin/trips/' . $trip->id . '/finish') }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="btn btn-warning btn-sm">
+                                                <i class="fas fa-stop"></i>
+                                            </button>
+                                        </form>
+                                    @endif
 
-        </tbody>
+                                </td>
 
-    </table>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
 @endsection

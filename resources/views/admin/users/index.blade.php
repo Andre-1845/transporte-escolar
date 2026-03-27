@@ -1,50 +1,114 @@
 @extends('layouts.admin')
 
+@section('title', 'Usuários')
+
 @section('content')
-    <h1>Usuários</h1>
 
-    <a href="{{ route('admin.users.create') }}">Novo usuário</a>
+    <!-- HEADER -->
+    <div class="section">
+        <div class="d-flex-between">
+            <h2><i class="fas fa-users"></i> Usuários</h2>
 
-    <table border="1" cellpadding="5">
+            <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Novo Usuário
+            </a>
+        </div>
+    </div>
 
-        <tr>
-            <th>Nome</th>
-            <th>Email</th>
-            <th>Roles</th>
-            <th>Ações</th>
-        </tr>
+    <!-- TABELA -->
+    <div class="section">
+        <div class="info-box" style="flex-direction: column; align-items: stretch;">
 
-        @foreach ($users as $user)
-            <tr>
+            <div class="section-header">
+                <h3>Lista de Usuários</h3>
+            </div>
 
-                <td>{{ $user->name }}</td>
-                <td>{{ $user->email }}</td>
+            @if ($users->count() > 0)
 
-                <td>
-                    @foreach ($user->roles as $role)
-                        {{ $role->name }}
-                    @endforeach
-                </td>
+                <div class="table-container mt-2">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Perfis</th>
+                                <th></th>
+                            </tr>
+                        </thead>
 
-                <td>
+                        <tbody>
+                            @foreach ($users as $user)
+                                <tr>
 
-                    <a href="{{ route('admin.users.edit', $user->id) }}">
-                        Editar
-                    </a>
+                                    <td>
+                                        <strong>{{ $user->name }}</strong>
+                                    </td>
 
-                    <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}" style="display:inline">
+                                    <td>{{ $user->email }}</td>
 
-                        @csrf
-                        @method('DELETE')
+                                    <td>
+                                        @forelse ($user->roles as $role)
+                                            @php
+                                                $roleName = strtolower($role->name);
 
-                        <button type="submit">Excluir</button>
+                                                $class = match ($roleName) {
+                                                    'driver' => 'badge-success',
+                                                    'admin' => 'badge-primary',
+                                                    default => 'badge-warning',
+                                                };
+                                            @endphp
 
-                    </form>
+                                            <span class="badge {{ $class }}">
+                                                {{ ucfirst($role->name) }}
+                                            </span>
 
-                </td>
+                                        @empty
+                                            <span class="badge badge-secondary">
+                                                Sem perfil
+                                            </span>
+                                        @endforelse
+                                    </td>
 
-            </tr>
-        @endforeach
+                                    <td style="display:flex; gap:6px;">
 
-    </table>
+                                        <!-- EDITAR -->
+                                        <a href="{{ route('admin.users.edit', $user->id) }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+
+                                        <!-- EXCLUIR -->
+                                        <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}">
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button type="submit" class="btn btn-danger btn-sm"
+                                                onclick="return confirm('Excluir este usuário?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+
+                                    </td>
+
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="alert alert-info mt-2">
+                    <i class="fas fa-info-circle"></i>
+                    Nenhum usuário cadastrado.
+
+                    <div class="mt-2">
+                        <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Criar primeiro usuário
+                        </a>
+                    </div>
+                </div>
+
+            @endif
+
+        </div>
+    </div>
+
 @endsection
