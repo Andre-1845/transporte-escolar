@@ -87,6 +87,8 @@ class StopPointManager
 
                 $result['speed'] = $speed;
                 $result['movement_status'] = $movementStatus;
+                $result['bearing'] = $movement['bearing'] ?? null;
+                $result['speed'] = $movement['speed'] ?? null;
             }
 
             $radius = $currentStop->radius_meters ?? 200;

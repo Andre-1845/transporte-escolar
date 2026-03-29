@@ -8,6 +8,7 @@ use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\GeoHelper;
+use App\Models\TripStopTracking;
 use Illuminate\Support\Facades\DB;
 
 class TripController extends Controller
@@ -109,8 +110,54 @@ class TripController extends Controller
                 }
             }
 
-            // 🔥 NOVO: Inicializa os stop points da viagem
-            $trip->initializeStops();
+            // =========================
+            // 🔥 START INTELIGENTE
+            // =========================
+
+            $stops = $trip->route->stops->sortBy('stop_order');
+
+            $closestStop = null;
+            $minDistance = PHP_FLOAT_MAX;
+
+            foreach ($stops as $stop) {
+                $distance = GeoHelper::distanceMeters(
+                    $request->latitude,
+                    $request->longitude,
+                    $stop->latitude,
+                    $stop->longitude
+                );
+
+                if ($distance < $minDistance) {
+                    $minDistance = $distance;
+                    $closestStop = $stop;
+                }
+            }
+
+            $startOrder = $closestStop->stop_order;
+
+            // 🔥 recria tracking
+            $trip->stopTracking()->delete();
+
+            foreach ($stops as $stop) {
+
+                if ($stop->stop_order < $startOrder) {
+                    $status = 'passed';
+                } else {
+                    $status = 'pending';
+                }
+
+                TripStopTracking::create([
+                    'trip_id' => $trip->id,
+                    'stop_id' => $stop->id,
+                    'stop_order' => $stop->stop_order,
+                    'status' => $status
+                ]);
+            }
+
+            // atualiza compatibilidade
+            $trip->update([
+                'current_stop_order' => $startOrder
+            ]);
 
             // ✅ INICIA VIAGEM
             $trip->update([

@@ -96,7 +96,9 @@ class TripLocationController extends Controller
 
         // Atualiza status de movimento na localização
         if (isset($result['movement_status'])) {
-            $location->movement_status = $result['movement_status'];
+            if (!empty($result['movement_status']) && $result['movement_status'] !== 'unknown') {
+                $location->movement_status = $result['movement_status'];
+            }
             $location->save();
         }
 
