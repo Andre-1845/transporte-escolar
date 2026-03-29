@@ -95,11 +95,33 @@ class Trip extends Model
     /**
      * NOVO: Busca o stop point atual (primeiro com status pending ou approaching)
      */
+
     public function getCurrentStop()
     {
-        return $this->stopTracking()
-            ->whereIn('status', ['pending', 'approaching'])
+        // 1. Prioridade: stop em aproximação
+        $approaching = $this->stopTracking()
+            ->where('status', 'approaching')
             ->orderBy('stop_order')
+            ->first();
+
+        if ($approaching) {
+            return $approaching;
+        }
+
+        // 2. Próximo pendente
+        $pending = $this->stopTracking()
+            ->where('status', 'pending')
+            ->orderBy('stop_order')
+            ->first();
+
+        if ($pending) {
+            return $pending;
+        }
+
+        // 3. Fallback: último alcançado (evita null inesperado)
+        return $this->stopTracking()
+            ->where('status', 'reached')
+            ->orderByDesc('stop_order')
             ->first();
     }
 

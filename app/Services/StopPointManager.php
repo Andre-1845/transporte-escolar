@@ -39,6 +39,9 @@ class StopPointManager
     public function processLocation(Trip $trip, float $lat, float $lng, ?TripLocation $previousLocation = null): array
     {
         return DB::transaction(function () use ($trip, $lat, $lng, $previousLocation) {
+
+            $trip->load('stopTracking.stop');
+
             $result = [
                 'current_stop' => null,
                 'distance' => null,
@@ -163,6 +166,9 @@ class StopPointManager
                 $nextTracking = $this->advanceToNextStop($trip, $currentTracking);
                 $result['advanced'] = true;
 
+                // 🔥 FORÇA RECARREGAMENTO DO ESTADO
+                $trip->load('stopTracking.stop');
+
                 if ($nextTracking) {
                     $this->handleNextStop($trip, $nextTracking, $lat, $lng, $result);
                 }
@@ -189,6 +195,9 @@ class StopPointManager
                     // Avança para próximo stop mesmo sem ter parado
                     $nextTracking = $this->advanceToNextStop($trip, $currentTracking);
                     $result['advanced'] = true;
+
+                    // 🔥 FORÇA RECARREGAMENTO DO ESTADO
+                    $trip->load('stopTracking.stop');
 
                     if ($nextTracking) {
                         $this->handleNextStop($trip, $nextTracking, $lat, $lng, $result);
@@ -246,7 +255,11 @@ class StopPointManager
             } else {
                 $result['eta_seconds'] = 0;
             }
-
+            Log::info('🔥 PROCESS LOCATION EXECUTADO', [
+                'trip_id' => $trip->id,
+                'lat' => $lat,
+                'lng' => $lng
+            ]);
             return $result;
         });
     }
