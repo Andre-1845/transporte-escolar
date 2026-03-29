@@ -93,8 +93,10 @@ class StopPointManager
             $approachRadius = $radius * self::APPROACH_RATIO;
 
             // =========================
-            // APPROACH
+            // ESTADOS (CORRIGIDO)
             // =========================
+
+            // 1. pending → approaching
             if ($currentTracking->status === 'pending' && $distance <= $approachRadius) {
 
                 $currentTracking->markAsApproaching($distance);
@@ -103,11 +105,13 @@ class StopPointManager
                     'stop' => $currentTracking->stop_order,
                     'distance' => $distance
                 ]);
+
+                // 🔥 PARA AQUI (IMPORTANTE)
+                return $result;
             }
 
-            // =========================
-            // REACHED
-            // =========================
+
+            // 2. approaching → reached
             if ($currentTracking->status === 'approaching' && $distance <= $radius) {
 
                 $currentTracking->markAsReached();
@@ -115,12 +119,17 @@ class StopPointManager
                 Log::info('✅ REACHED', [
                     'stop' => $currentTracking->stop_order
                 ]);
+
+                // 🔥 PARA AQUI
+                return $result;
             }
 
-            // =========================
-            // PASSED
-            // =========================
-            if ($currentTracking->status === 'reached' && $movementStatus === 'leaving') {
+
+            // 3. reached → passed (SÓ quando sair do raio)
+            if (
+                $currentTracking->status === 'reached' &&
+                $distance > ($radius + 30) // buffer de saída
+            ) {
 
                 $currentTracking->markAsPassed();
 
@@ -129,6 +138,8 @@ class StopPointManager
                 Log::info('➡️ PASSED → NEXT', [
                     'stop' => $currentTracking->stop_order
                 ]);
+
+                return $result;
             }
 
             // =========================
