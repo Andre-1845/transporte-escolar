@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Trip;
 use App\Models\TripStopTracking;
 use App\Helpers\GeoHelper;
+use App\Models\StopTimeMetrics;
 use App\Models\TripLocation;
 use Illuminate\Support\Facades\DB;
 use App\Services\AlertService;
@@ -14,8 +15,6 @@ class StopPointManager
 {
     private $alertService;
     private $movementAnalyzer;
-
-    const APPROACH_RATIO = 1.5;
 
     public function __construct(AlertService $alertService, MovementAnalyzer $movementAnalyzer)
     {
@@ -33,11 +32,14 @@ class StopPointManager
                 'advanced' => false,
                 'eta_seconds' => null,
                 'bearing' => null,
+                'heading' => null,
                 'speed' => null,
                 'movement_status' => 'moving'
             ];
 
-            // 🔥 CORREÇÃO PRINCIPAL: query direta
+            // =========================
+            // STOP ATUAL
+            // =========================
             $currentTracking = TripStopTracking::where('trip_id', $trip->id)
                 ->whereIn('status', ['pending', 'approaching'])
                 ->orderBy('stop_order')
@@ -60,12 +62,13 @@ class StopPointManager
             $result['distance'] = $distance;
 
             // =========================
-            // MOVEMENT
+            // MOVEMENT (🔥 CORRIGIDO)
             // =========================
             $speed = 0;
             $movementStatus = 'moving';
 
             if ($previousLocation) {
+
                 $movement = $this->movementAnalyzer->analyzeMovement(
                     $previousLocation->latitude,
                     $previousLocation->longitude,
@@ -76,31 +79,48 @@ class StopPointManager
                 );
 
                 $speed = $movement['speed'];
+                $bearing = $movement['bearing'];
 
                 $lastDistance = $previousLocation->getDistanceToStop($currentStop->id);
+
+                // 🔥 direção até o stop
+                $stopBearing = $this->movementAnalyzer->calculateBearing(
+                    $lat,
+                    $lng,
+                    $currentStop->latitude,
+                    $currentStop->longitude
+                );
 
                 $movementStatus = $this->movementAnalyzer->getMovementStatus(
                     $speed,
                     $distance,
-                    $lastDistance
+                    $lastDistance,
+                    $bearing,
+                    $stopBearing
                 );
 
                 $result['speed'] = $speed;
+                $result['bearing'] = $bearing;
+                $result['heading'] = $movement['heading'];
                 $result['movement_status'] = $movementStatus;
-                $result['bearing'] = $movement['bearing'] ?? null;
-                $result['speed'] = $movement['speed'] ?? null;
             }
 
-            $radius = $currentStop->radius_meters ?? 200;
-            $approachRadius = $radius * self::APPROACH_RATIO;
+            // =========================
+            // RAIO
+            // =========================
+            $radius = 80; // 🔥 chegou
+            $approachRadius = 200; // 🔥 chegando
 
             // =========================
-            // ESTADOS (CORRIGIDO)
+            // ESTADOS
             // =========================
 
-            // 1. pending → approaching
-            if ($currentTracking->status === 'pending' && $distance <= $approachRadius) {
-
+            // approaching
+            if (
+                $currentTracking->status === 'pending' &&
+                $distance <= $approachRadius &&
+                $distance > $radius
+            ) {
                 $currentTracking->markAsApproaching($distance);
 
                 Log::info('➡️ APPROACH', [
@@ -108,30 +128,58 @@ class StopPointManager
                     'distance' => $distance
                 ]);
 
-                // 🔥 PARA AQUI (IMPORTANTE)
                 return $result;
             }
 
-
-            // 2. approaching → reached
-            if ($currentTracking->status === 'approaching' && $distance <= $radius) {
-
+            // reached
+            if (
+                $currentTracking->status === 'approaching' &&
+                $distance <= $radius
+            ) {
                 $currentTracking->markAsReached();
 
                 Log::info('✅ REACHED', [
-                    'stop' => $currentTracking->stop_order
+                    'stop' => $currentTracking->stop_order,
+                    'distance' => $distance
                 ]);
 
-                // 🔥 PARA AQUI
                 return $result;
             }
 
-
-            // 3. reached → passed (SÓ quando sair do raio)
+            // passed
             if (
                 $currentTracking->status === 'reached' &&
-                $distance > ($radius + 30) // buffer de saída
+                $distance > ($radius + 50)
             ) {
+
+                // 🔥 MÉTRICAS
+                $previousStop = TripStopTracking::where('trip_id', $trip->id)
+                    ->where('stop_order', $currentTracking->stop_order - 1)
+                    ->first();
+
+                if ($previousStop && $previousStop->reached_at && $currentTracking->reached_at) {
+
+                    $timeSeconds = strtotime($currentTracking->reached_at) - strtotime($previousStop->reached_at);
+
+                    $metric = StopTimeMetrics::firstOrNew([
+                        'route_id' => $trip->school_route_id,
+                        'from_stop_id' => $previousStop->stop_id,
+                        'to_stop_id' => $currentTracking->stop_id,
+                    ]);
+
+                    if ($metric->exists) {
+                        $metric->avg_time_seconds = intval(
+                            ($metric->avg_time_seconds * $metric->sample_count + $timeSeconds)
+                                / ($metric->sample_count + 1)
+                        );
+                        $metric->sample_count += 1;
+                    } else {
+                        $metric->avg_time_seconds = $timeSeconds;
+                        $metric->sample_count = 1;
+                    }
+
+                    $metric->save();
+                }
 
                 $currentTracking->markAsPassed();
 
