@@ -57,3 +57,4 @@ temp_backup/*
 # NPM
 /package-lock.json
 /yarn.lock
+copias_seg_transp/

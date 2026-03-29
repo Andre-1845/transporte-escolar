@@ -7,6 +7,7 @@ use App\Models\Trip;
 use App\Models\TripLocation;
 use App\Services\StopPointManager;
 use App\Helpers\GeoHelper;
+use App\Models\TripStopTracking;
 use App\Services\AlertService;
 use App\Services\MovementAnalyzer;
 use Illuminate\Http\Request;
@@ -145,7 +146,10 @@ class TripLocationController extends Controller
         $lat = $location->latitude;
         $lng = $location->longitude;
 
-        $currentTracking = $trip->getCurrentStop();
+        $currentTracking = TripStopTracking::where('trip_id', $trip->id)
+            ->whereIn('status', ['pending', 'approaching'])
+            ->orderBy('stop_order')
+            ->first();
         $distance = null;
         $nextStop = null;
         $eta = null;
